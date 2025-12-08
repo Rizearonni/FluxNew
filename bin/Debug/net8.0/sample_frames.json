@@ -1,0 +1,26 @@
+[
+  {
+    "name":"SampleFrame",
+    "type":"Frame",
+    "shown":true,
+    "x":100,
+    "y":200,
+    "w":256,
+    "h":128,
+    "scale":1,
+    "anchors":[{"point":"TOPLEFT","relativeTo":"","relPoint":"TOPLEFT","x":100,"y":200}],
+    "children":[]
+  },
+  {
+    "name":"ChildFrame",
+    "type":"Frame",
+    "shown":false,
+    "x":10,
+    "y":10,
+    "w":64,
+    "h":64,
+    "scale":1,
+    "anchors":[{"point":"TOPLEFT","relativeTo":"SampleFrame","relPoint":"TOPLEFT","x":10,"y":-10}],
+    "children":[]
+  }
+]

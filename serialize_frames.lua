@@ -35,5 +35,17 @@ for i,f in ipairs(Flux._frames) do
 end
 local result = '['..table.concat(out,',')..']'
 -- Also print the JSON so runtimes that capture stdout receive it reliably
+-- Also write the JSON to a file so hosts can read it if stdout/return isn't available
+local ok, err = pcall(function()
+  local f = io.open("debug_frames.json", "w+")
+  if f then
+    f:write(result)
+    f:close()
+  end
+end)
+if not ok then
+  -- ignore file write errors
+end
+
 print(result)
 return result

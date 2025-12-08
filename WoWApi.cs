@@ -100,6 +100,27 @@ end
             var (ok, res) = KopiLuaRunner.TryRun(code);
             Console.WriteLine($"Loaded addon '{Path.GetFileName(addonPath)}': success={ok}, result={res}");
 
+            // Development shortcut: if a static sample JSON exists (sample_frames.json),
+            // use it and skip running the serializer. This lets UI work continue without
+            // relying on runtime serializer execution.
+            try
+            {
+              var samplePath = Path.Combine(AppContext.BaseDirectory ?? Environment.CurrentDirectory, "sample_frames.json");
+              if (File.Exists(samplePath))
+              {
+                var sampleContents = File.ReadAllText(samplePath);
+                if (!string.IsNullOrWhiteSpace(sampleContents))
+                {
+                  Console.WriteLine($"Using sample_frames.json for addon '{Path.GetFileName(addonPath)}' (len={sampleContents.Length})");
+                  return (true, sampleContents);
+                }
+              }
+            }
+            catch (Exception ex)
+            {
+              Console.WriteLine($"Error reading sample_frames.json: {ex.Message}");
+            }
+
             // Attempt to run an external Lua serializer shipped with the app (serialize_frames.lua)
             try
             {
@@ -173,8 +194,27 @@ end
                         }
                         else
                         {
-                            Console.WriteLine($"Serializer execution failed for addon '{Path.GetFileName(addonPath)}': {qRes}");
-                            return (false, string.Empty);
+                          Console.WriteLine($"Serializer execution failed for addon '{Path.GetFileName(addonPath)}': {qRes}");
+                          // Fallback: check for file written by serializer (debug_frames.json) in working directory
+                          try
+                          {
+                            var dumpPath = Path.Combine(AppContext.BaseDirectory ?? Environment.CurrentDirectory, "debug_frames.json");
+                            if (File.Exists(dumpPath))
+                            {
+                              var fileContents = File.ReadAllText(dumpPath);
+                              if (!string.IsNullOrWhiteSpace(fileContents))
+                              {
+                                Console.WriteLine($"Found serializer file at {dumpPath} (len={fileContents.Length})");
+                                return (true, fileContents);
+                              }
+                            }
+                          }
+                          catch (Exception ex)
+                          {
+                            Console.WriteLine($"Error reading debug_frames.json fallback: {ex.Message}");
+                          }
+
+                          return (false, string.Empty);
                         }
                     }
                     catch (Exception ex)

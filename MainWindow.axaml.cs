@@ -27,12 +27,50 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
-        InitializeComponent();
-        // Redirect console early so diagnostics appear in the Debug Console
-        RedirectConsoleToDebug();
-        TryInitializeEditor();
-        TryWireFileList();
-        WireToolbarAndShortcuts();
+        try
+        {
+            InitializeComponent();
+            TryInitializeEditor();
+            TryWireFileList();
+            WireToolbarAndShortcuts();
+        }
+        catch (Exception ex)
+        {
+            AppendToConsole($"MainWindow ctor exception during InitializeComponent/setup: {ex.Message}");
+            throw;
+        }
+        // Initialize Lua and WoW API now that Avalonia platform services are ready
+        try
+        {
+            InitializeLua();
+        }
+        catch (Exception ex)
+        {
+            AppendToConsole($"InitializeLua failed: {ex.Message}");
+        }
+    }
+
+    private void InitializeLua()
+    {
+        try
+        {
+            AppendToConsole("InitializeLua: Installing WoW API into KopiLua");
+            WoWApi.LoadApi();
+            var samplePath = Path.Combine(Environment.CurrentDirectory, "addons", "SampleAddon");
+            if (Directory.Exists(samplePath))
+            {
+                var (ok, frames) = WoWApi.TryLoadAddonDirectory(samplePath);
+                AppendToConsole($"Loaded sample addon: success={ok}, frames(len)={(frames?.Length ?? 0)}");
+            }
+            else
+            {
+                AppendToConsole($"Sample addon folder not found: {samplePath}");
+            }
+        }
+        catch (Exception ex)
+        {
+            AppendToConsole($"Lua init failed: {ex.Message}");
+        }
     }
 
     private void WireToolbarAndShortcuts()
@@ -1048,15 +1086,126 @@ public partial class MainWindow : Window
     private class DebugTextWriter : TextWriter
     {
         private readonly MainWindow _win;
+        private readonly StringBuilder _buf = new StringBuilder();
+        private static readonly string DumpFileName = Path.Combine(Environment.CurrentDirectory, "debug_dump.log");
+        private const int LargeLineThreshold = 50; // lines
+        private const int LargeCharThreshold = 2000; // chars
+
         public DebugTextWriter(MainWindow win) { _win = win; }
         public override Encoding Encoding => Encoding.UTF8;
+
+        // Write a whole line at once. If very large, write to disk instead of flooding the UI.
         public override void WriteLine(string? value)
         {
-            _win.AppendToConsole(value ?? string.Empty);
+            var s = value ?? string.Empty;
+            if (ShouldDumpToFile(s))
+            {
+                WriteLargeToFile(s + Environment.NewLine);
+            }
+            else
+            {
+                _win.AppendToConsole(s);
+            }
         }
+
+        // Buffer single characters and flush only on newline to avoid flooding the UI thread
         public override void Write(char value)
         {
-            _win.AppendToConsole(value.ToString());
+            lock (_buf)
+            {
+                if (value == '\n')
+                {
+                    var line = _buf.ToString();
+                    _buf.Clear();
+                    if (ShouldDumpToFile(line))
+                        WriteLargeToFile(line + Environment.NewLine);
+                    else
+                        _win.AppendToConsole(line);
+                }
+                else if (value != '\r')
+                {
+                    _buf.Append(value);
+                }
+            }
+        }
+
+        // Handle Write(string) efficiently: split on newlines and flush accordingly
+        public override void Write(string? value)
+        {
+            if (string.IsNullOrEmpty(value)) return;
+            lock (_buf)
+            {
+                int start = 0;
+                for (int i = 0; i < value.Length; i++)
+                {
+                    var c = value[i];
+                    if (c == '\n')
+                    {
+                        _buf.Append(value, start, i - start);
+                        var line = _buf.ToString();
+                        _buf.Clear();
+                        if (ShouldDumpToFile(line))
+                            WriteLargeToFile(line + Environment.NewLine);
+                        else
+                            _win.AppendToConsole(line);
+                        start = i + 1;
+                    }
+                }
+                if (start < value.Length)
+                {
+                    _buf.Append(value, start, value.Length - start);
+                }
+            }
+        }
+
+        private static bool ShouldDumpToFile(string s)
+        {
+            if (s == null) return false;
+            if (s.Length >= LargeCharThreshold) return true;
+            var lines = s.Count(c => c == '\n') + 1;
+            if (lines >= LargeLineThreshold) return true;
+            return false;
+        }
+
+        private static void WriteLargeToFile(string content)
+        {
+            try
+            {
+                // Append to a rolling file; keep it bounded by simple truncation if it grows too large
+                const long MaxBytes = 5 * 1024 * 1024; // 5 MB
+                FileStream? fs = null;
+                try
+                {
+                    fs = new FileStream(DumpFileName, FileMode.Append, FileAccess.Write, FileShare.Read);
+                    var bytes = Encoding.UTF8.GetBytes(content);
+                    fs.Write(bytes, 0, bytes.Length);
+                }
+                finally { fs?.Dispose(); }
+
+                // If file too big, truncate by keeping last chunk
+                try
+                {
+                    var fi = new FileInfo(DumpFileName);
+                    if (fi.Length > MaxBytes)
+                    {
+                        // keep last MaxBytes/2 bytes
+                        var keep = MaxBytes / 2;
+                        using (var r = new FileStream(DumpFileName, FileMode.Open, FileAccess.Read, FileShare.None))
+                        {
+                            if (r.Length > keep)
+                            {
+                                r.Seek(-keep, SeekOrigin.End);
+                                var buf = new byte[keep];
+                                var read = r.Read(buf, 0, (int)keep);
+                                r.Close();
+                                File.WriteAllBytes(DumpFileName, buf.Take(read).ToArray());
+                            }
+                        }
+                    }
+                }
+                catch { }
+            }
+            catch { }
         }
     }
 }

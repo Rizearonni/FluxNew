@@ -12,38 +12,16 @@ class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        // Startup smoke test: run a simple Lua expression and print the result.
-        try
+        AppDomain.CurrentDomain.UnhandledException += (s, e) =>
         {
-            var (ok, result) = KopiLuaRunner.TryRun("return 1+1");
-            Console.WriteLine($"KopiLuaRunner.TryRun: success={ok}, result={result}");
-        }
-        catch (Exception ex)
+            try { Console.WriteLine($"UnhandledException: {e.ExceptionObject}"); } catch { }
+        };
+        System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (s, e) =>
         {
-            Console.WriteLine($"KopiLuaRunner smoke test failed: {ex}");
-        }
-
-        // Install minimal WoW API shim into the Lua state.
-        try
-        {
-            WoWApi.LoadApi();
-
-            // Attempt to load a sample addon if present in a local `addons` folder.
-            var samplePath = Path.Combine(Environment.CurrentDirectory, "addons", "SampleAddon");
-            if (Directory.Exists(samplePath))
-            {
-                var (ok, frames) = WoWApi.TryLoadAddonDirectory(samplePath);
-                Console.WriteLine($"Program: sample addon load success={ok}, frames={frames}");
-            }
-            else
-            {
-                Console.WriteLine($"Sample addon folder not found: {samplePath}");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"WoW API initialization failed: {ex}");
-        }
+            try { Console.WriteLine($"UnobservedTaskException: {e.Exception.Message}"); } catch { }
+        };
+        // Defer Lua and WoW API initialization until after Avalonia platform
+        // services are available (MainWindow will initialize Lua).
 
         BuildAvaloniaApp()
             .StartWithClassicDesktopLifetime(args);
