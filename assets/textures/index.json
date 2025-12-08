@@ -1,0 +1,43 @@
+{
+  "moduleIcons": {
+    "Chat": "CHATFRAME/UI-ChatIcon-Chat-Up.PNG",
+    "Minimap": "MINIMAP/UI-Minimap-Background.PNG",
+    "Bags": "CHARACTERFRAME/UI-Player-Status.PNG",
+    "Unitframes": "CHARACTERFRAME/UI-Player-Portrait.PNG"
+  },
+  "characterframe": {
+    "player_portrait": "CHARACTERFRAME/UI-Player-Portrait.PNG",
+    "temp_portrait_mask_small": "CHARACTERFRAME/TempPortraitAlphaMaskSmall.PNG"
+  },
+  "castingbar": {
+    "border": "CastingBar/UI-CastingBar-Border.PNG",
+    "border_small": "CastingBar/UI-CastingBar-Border-Small.PNG",
+    "flash": "CastingBar/UI-CastingBar-Flash.PNG",
+    "spark": "CastingBar/UI-CastingBar-Spark.PNG",
+    "spark_red": "CastingBar/UI-CastingBar-SparkRed.PNG",
+    "shield": "CastingBar/UI-CastingBar-Small-Shield.PNG"
+  },
+  "chatframe": {
+    "bg": "CHATFRAME/CHATFRAMEBACKGROUND.PNG",
+    "border": "CHATFRAME/ChatFrameBorder.PNG",
+    "tab_left": "CHATFRAME/ChatFrameTab-BGLeft.PNG",
+    "tab_mid": "CHATFRAME/ChatFrameTab-BGMid.PNG",
+    "tab_right": "CHATFRAME/ChatFrameTab-BGRight.PNG",
+    "tab_selected_left": "CHATFRAME/ChatFrameTab-SelectedLeft.PNG",
+    "tab_selected_mid": "CHATFRAME/ChatFrameTab-SelectedMid.PNG",
+    "tab_selected_right": "CHATFRAME/ChatFrameTab-SelectedRight.PNG"
+  },
+  "minimap": {
+    "ring": "MINIMAP/UI-MINIMAP-BORDER.PNG",
+    "background": "MINIMAP/UI-Minimap-Background.PNG",
+    "arrow": "MINIMAP/MinimapArrow.PNG",
+    "clock": "MINIMAP/MinimapClock.PNG"
+  },
+  "raidframe": {
+    "hp_fill": "RAIDFRAME/Raid-Bar-Hp-Fill.PNG",
+    "hp_bg": "RAIDFRAME/Raid-Bar-Hp-Bg.PNG",
+    "panel_left": "RAIDFRAME/RaidPanel-Left.PNG",
+    "panel_middle": "RAIDFRAME/RaidPanel-BottomMiddle.PNG",
+    "panel_right": "RAIDFRAME/RaidPanel-Right.PNG"
+  }
+}

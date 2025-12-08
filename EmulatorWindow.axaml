@@ -24,6 +24,10 @@
       <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0" Padding="8">
         <StackPanel>
           <TextBlock Classes="header" Text="Addons" />
+          <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,6,0,0">
+            <Button Name="LoadAddonFolderButton" Classes="flat">Load Folder...</Button>
+            <Button Name="RefreshAddonsButton" Classes="flat">Refresh</Button>
+          </StackPanel>
           <ListBox Name="AddonList" Margin="0,8,0,0">
             <!-- items populated at runtime -->
           </ListBox>
@@ -61,6 +65,25 @@
           <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
             <Button Name="ApplyButton" Classes="flat">Apply</Button>
             <Button Name="DeleteButton" Classes="flat">Delete</Button>
+          </StackPanel>
+          <StackPanel Orientation="Vertical" Spacing="6" Margin="0,8,0,0">
+            <TextBlock Text="Expansion" Foreground="{StaticResource SubtleForegroundBrush}" />
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <RadioButton Name="ExpVanillaRadio" GroupName="ExpansionGroup">Vanilla</RadioButton>
+              <RadioButton Name="ExpMistsRadio" GroupName="ExpansionGroup">Mists</RadioButton>
+              <RadioButton Name="ExpMainlineRadio" GroupName="ExpansionGroup">Mainline</RadioButton>
+            </StackPanel>
+            <Button Name="EditPresetsButton" Classes="flat" Margin="0,6,0,0">Edit Presets...</Button>
+          </StackPanel>
+
+          <CheckBox Name="CaptureConsoleCheck" Content="Capture Console" Margin="0,8,0,0" />
+
+          <TextBlock Text="Modules" Classes="header" Margin="0,16,0,4" />
+          <StackPanel Orientation="Vertical" Spacing="6">
+            <CheckBox Name="ChatModuleCheck" Content="Chat" />
+            <CheckBox Name="UnitFramesModuleCheck" Content="Player Unit Frames" />
+            <CheckBox Name="MapModuleCheck" Content="Map" />
+            <CheckBox Name="BagsModuleCheck" Content="Bags" />
           </StackPanel>
 
           <TextBlock Text="Hints" Classes="header" Margin="0,16,0,4" />

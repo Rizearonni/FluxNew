@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <Styles.Resources>
+    <ResourceDictionary>
+      <!-- Module look: textured-ish with gradients (non-copyright placeholder) -->
+      <LinearGradientBrush x:Key="ModuleBackgroundBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#141821" Offset="0" />
+        <GradientStop Color="#0b1116" Offset="1" />
+      </LinearGradientBrush>
+
+      <LinearGradientBrush x:Key="ModuleInnerBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#172027" Offset="0" />
+        <GradientStop Color="#0e161b" Offset="1" />
+      </LinearGradientBrush>
+
+      <LinearGradientBrush x:Key="ModuleTitleBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#21364a" Offset="0" />
+        <GradientStop Color="#17313f" Offset="1" />
+      </LinearGradientBrush>
+
+      <SolidColorBrush x:Key="ModuleEdgeBrush" Color="#22313b" />
+      <SolidColorBrush x:Key="ModuleDecalBrush" Color="#ffffff20" />
+      <SolidColorBrush x:Key="ModuleTitleTextBrush" Color="#e9f6ff" />
+
+      <!-- subtle gloss line under title -->
+      <SolidColorBrush x:Key="ModuleGlossLine" Color="#ffffff10" />
+    </ResourceDictionary>
+  </Styles.Resources>
+
+  <!-- small helper style for title text inside module frames -->
+  <Style Selector="TextBlock.moduleTitle">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Foreground" Value="{StaticResource ModuleTitleTextBrush}" />
+    <Setter Property="Margin" Value="6,2,6,2" />
+  </Style>
+
+</Styles>

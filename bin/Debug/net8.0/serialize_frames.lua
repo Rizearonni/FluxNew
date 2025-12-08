@@ -30,7 +30,14 @@ for i,f in ipairs(Flux._frames) do
     end
   end
   local childStr = '['..table.concat(children,',')..']'
-  local entry = '{"name":'..name..',"type":'..ftype..',"shown":'..shown..',"x":'..x..',"y":'..y..',"w":'..w..',"h":'..h..',"scale":'..scale..',"anchors":'..anchorStr..',"children":'..childStr..'}'
+  local entry = nil
+  if (f._type or '') == 'FontString' then
+    local text = q(f.text or f[1] or '')
+    local parent = q((f.parent and f.parent._name) or '')
+    entry = '{"name":'..name..',"type":'..ftype..',"text":'..text..',"parent":'..parent..'}'
+  else
+    entry = '{"name":'..name..',"type":'..ftype..',"shown":'..shown..',"x":'..x..',"y":'..y..',"w":'..w..',"h":'..h..',"scale":'..scale..',"anchors":'..anchorStr..',"children":'..childStr..'}'
+  end
   table.insert(out, entry)
 end
 local result = '['..table.concat(out,',')..']'

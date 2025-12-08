@@ -6,6 +6,7 @@
     <Application.Styles>
         <FluentTheme />
         <StyleInclude Source="avares://FluxNew/Styles/ModernTheme.axaml" />
+        <StyleInclude Source="avares://FluxNew/Styles/ModuleTextures.axaml" />
     </Application.Styles>
 
 </Application>

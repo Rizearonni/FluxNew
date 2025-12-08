@@ -1,0 +1,89 @@
+<Window xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Class="FluxNew.PresetEditorWindow"
+    Title="Edit Expansion Presets"
+    Width="520" Height="420">
+  <Grid Margin="8">
+    <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="*">
+      <TextBlock Text="Edit expansion presets (project id, version, build, toc). Click Save to apply." />
+
+      <ScrollViewer Grid.Row="1">
+        <StackPanel Spacing="8">
+          <!-- Vanilla -->
+          <Border BorderThickness="1" BorderBrush="{StaticResource BorderBrush}" Padding="6">
+            <StackPanel Spacing="6">
+              <TextBlock Text="Vanilla" FontWeight="Bold" />
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Width="120" Text="WOW_PROJECT_ID" VerticalAlignment="Center" />
+                <TextBox Name="VanillaProjectIdBox" Width="260" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Width="120" Text="Version" VerticalAlignment="Center" />
+                <TextBox Name="VanillaVersionBox" Width="260" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Width="120" Text="Build" VerticalAlignment="Center" />
+                <TextBox Name="VanillaBuildBox" Width="260" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Width="120" Text="TOC" VerticalAlignment="Center" />
+                <TextBox Name="VanillaTOCBox" Width="260" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <!-- Mists -->
+          <Border BorderThickness="1" BorderBrush="{StaticResource BorderBrush}" Padding="6">
+            <StackPanel Spacing="6">
+              <TextBlock Text="Mists" FontWeight="Bold" />
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Width="120" Text="WOW_PROJECT_ID" VerticalAlignment="Center" />
+                <TextBox Name="MistsProjectIdBox" Width="260" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Width="120" Text="Version" VerticalAlignment="Center" />
+                <TextBox Name="MistsVersionBox" Width="260" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Width="120" Text="Build" VerticalAlignment="Center" />
+                <TextBox Name="MistsBuildBox" Width="260" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Width="120" Text="TOC" VerticalAlignment="Center" />
+                <TextBox Name="MistsTOCBox" Width="260" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <!-- Mainline -->
+          <Border BorderThickness="1" BorderBrush="{StaticResource BorderBrush}" Padding="6">
+            <StackPanel Spacing="6">
+              <TextBlock Text="Mainline" FontWeight="Bold" />
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Width="120" Text="WOW_PROJECT_ID" VerticalAlignment="Center" />
+                <TextBox Name="MainProjectIdBox" Width="260" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Width="120" Text="Version" VerticalAlignment="Center" />
+                <TextBox Name="MainVersionBox" Width="260" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Width="120" Text="Build" VerticalAlignment="Center" />
+                <TextBox Name="MainBuildBox" Width="260" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Width="120" Text="TOC" VerticalAlignment="Center" />
+                <TextBox Name="MainTOCBox" Width="260" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+
+      <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <Button Name="CancelBtn" Classes="flat">Cancel</Button>
+        <Button Name="SaveBtn" Classes="flat">Save</Button>
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>

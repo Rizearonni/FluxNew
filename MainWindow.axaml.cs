@@ -21,7 +21,9 @@ public partial class MainWindow : Window
     private object? _innerTextAreaInstance;
     private Type? _innerTextAreaType;
     private string? _currentFilePath;
-    private bool _isDirty = false;
+    #pragma warning disable CS0414 // Assigned but value never used (placeholder for editor dirty tracking)
+    private bool _isDirty;
+    #pragma warning restore CS0414
     // When we programmatically change selection in the FileList we suppress the SelectionChanged handler
     private bool _suppressFileListSelectionChanged = false;
 
@@ -103,6 +105,8 @@ public partial class MainWindow : Window
                             {
                                 il.Add(mi);
                             }
+
+                            // (Addon loading is handled in the Emulator window.)
                             // Prefer opening the ContextMenu with the target control to avoid internal null errors
                             try
                             {
@@ -155,10 +159,12 @@ public partial class MainWindow : Window
     {
         try
         {
+#pragma warning disable CS0618 // OpenFileDialog is obsolete; keep for compatibility
             var dlg = new OpenFileDialog();
             dlg.Title = "Open file";
             dlg.AllowMultiple = false;
             var res = await dlg.ShowAsync(this);
+#pragma warning restore CS0618
             if (res != null && res.Length > 0)
             {
                 var path = res[0];
@@ -197,9 +203,13 @@ public partial class MainWindow : Window
     {
         try
         {
+            #pragma warning disable CS0618 // SaveFileDialog is obsolete; keep for compatibility
             var dlg = new SaveFileDialog();
+            #pragma warning restore CS0618
             dlg.Title = "Save file as";
+            #pragma warning disable CS0618 // SaveFileDialog is obsolete; keep for compatibility
             var path = await dlg.ShowAsync(this);
+            #pragma warning restore CS0618
             if (!string.IsNullOrEmpty(path))
             {
                 var content = GetEditorText();
@@ -570,7 +580,7 @@ public partial class MainWindow : Window
                         if (!wrote)
                         {
                             // Fallback: look for a method named SetText or Load
-                            var setTextMethod = _editorType.GetMethod("SetText") ?? _editorType.GetMethod("Load");
+                            var setTextMethod = (_editorType != null) ? (_editorType.GetMethod("SetText") ?? _editorType.GetMethod("Load")) : null;
                             if (setTextMethod != null)
                             {
                                 try { setTextMethod.Invoke(_editorInstance, new object[] { code }); AppendToConsole("Editor text set via method fallback"); wrote = true; } catch (Exception ex) { AppendToConsole($"SetText/Load invoke failed: {ex.Message}"); }
@@ -581,7 +591,7 @@ public partial class MainWindow : Window
                     // Force visual refresh and caret reset
                     try
                     {
-                        if (_innerTextAreaInstance != null)
+                        if (_innerTextAreaInstance != null && _innerTextAreaType != null)
                         {
                             try { _innerTextAreaType.GetMethod("InvalidateVisual")?.Invoke(_innerTextAreaInstance, null); } catch { }
                             try
@@ -1027,6 +1037,8 @@ public partial class MainWindow : Window
     {
         try
         {
+    #pragma warning disable CS8602 // guard prevents null, analyzer may be imprecise
+            if (editor == null || highlightBlock == null || gutter == null) return;
             var text = editor.Text ?? string.Empty;
 
             // Update gutter (line numbers)
@@ -1052,6 +1064,7 @@ public partial class MainWindow : Window
                 if (m.Groups["str"].Success)
                 {
                     highlightBlock.Inlines.Add(new Run { Text = m.Value, Foreground = Brushes.Orange });
+                    #pragma warning restore CS8602
                 }
                 else if (m.Groups["comment"].Success)
                 {
