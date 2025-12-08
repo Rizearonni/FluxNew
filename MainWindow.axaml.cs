@@ -81,7 +81,8 @@ public partial class MainWindow : Window
         {
             var fileBtn = this.FindControl<Button>("FileButton");
             if (fileBtn != null) fileBtn.Click += async (_, __) => await OnFileMenuOpenAsync();
-                var viewBtn = this.FindControl<Button>("ViewButton");
+            
+            var viewBtn = this.FindControl<Button>("ViewButton");
                 if (viewBtn != null)
                 {
                     viewBtn.Click += (s, e) =>

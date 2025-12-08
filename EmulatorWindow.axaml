@@ -86,6 +86,10 @@
             <CheckBox Name="BagsModuleCheck" Content="Bags" />
           </StackPanel>
 
+          <TextBlock Text="Rendering" Classes="header" Margin="0,16,0,4" />
+          <Button Name="RenderFramesButton" Classes="flat" Margin="0,4,0,0">Render Frames</Button>
+          <TextBlock Foreground="{StaticResource SubtleForegroundBrush}" TextWrapping="Wrap" FontSize="11" Margin="0,4,0,0">Renders textures from loaded addons to the canvas</TextBlock>
+
           <TextBlock Text="Hints" Classes="header" Margin="0,16,0,4" />
           <TextBlock Foreground="{StaticResource SubtleForegroundBrush}" TextWrapping="Wrap">Click a frame to select. Drag to move. Use the grip to resize. Use the inspector to manually set X/Y/Width/Height.</TextBlock>
         </StackPanel>

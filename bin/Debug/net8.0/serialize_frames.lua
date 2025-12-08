@@ -37,6 +37,14 @@ for i,f in ipairs(Flux._frames) do
     local parentNodePath = ''
     if f.parent and f.parent._nodePath then parentNodePath = tostring(f.parent._nodePath) end
     entry = '{"name":'..name..',"type":'..ftype..',"text":'..text..',"parent":'..q(parent)..',"parentNodePath":'..q(parentNodePath)..'}'
+  elseif (f._type or '') == 'Texture' then
+    -- Serialize texture metadata
+    local texPath = q(f.texturePath or '')
+    local layer = q(f.layer or 'ARTWORK')
+    local parent = f.parent and f.parent._name or ''
+    local coords = f.texcoords or {0,1,0,1}
+    local coordStr = '['..table.concat(coords,',')..']'
+    entry = '{"name":'..name..',"type":'..ftype..',"texturePath":'..texPath..',"layer":'..layer..',"parent":'..q(parent)..',"x":'..x..',"y":'..y..',"w":'..w..',"h":'..h..',"texcoords":'..coordStr..'}'
   else
     -- include nodePath when available (populated by SetTree materialization)
     local nodePath = f._nodePath or ''

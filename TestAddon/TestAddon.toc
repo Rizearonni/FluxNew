@@ -1,0 +1,5 @@
+## Interface: 11200
+## Title: Test Texture Addon
+## Notes: Simple test for texture rendering
+
+TestAddon.lua

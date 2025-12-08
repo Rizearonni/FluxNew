@@ -73,6 +73,10 @@
             "Avalonia.Themes.Fluent": {
               "target": "Package",
               "version": "[11.3.9, )"
+            },
+            "SixLabors.ImageSharp": {
+              "target": "Package",
+              "version": "[3.1.0, )"
             }
           },
           "imports": [

@@ -563,6 +563,32 @@ function CreateFrame(ftype, name, parent)
     table.insert(Flux._frames, fs)
     return fs
   end
+  function frame:CreateTexture(name, layer)
+    local tex = { _type = 'Texture', _name = tostring(name or 'tex_' .. tostring(math.random(1000,9999))), texturePath = '', parent = self, layer = layer }
+    -- tex coords defaults
+    tex.texcoords = { 0, 1, 0, 1 }
+    function tex:SetTexture(path)
+      self.texturePath = path
+    end
+    function tex:SetTexCoord(a,b,c,d,e,f,g,h)
+      -- support SetTexCoord(u1, v1, u2, v2) or 4-arg and 8-arg forms
+      if a and b and c and d and not e then
+        self.texcoords = { a, b, c, d }
+      elseif a and b and c and d and e and f and g and h then
+        self.texcoords = { a, b, c, d, e, f, g, h }
+      end
+    end
+    function tex:SetSize(w,h)
+      self.width = w
+      self.height = h
+    end
+    function tex:SetPoint(...) table.insert(self.parent._points, { point = tostring((select(1, ...)) or '' ) }) end
+    -- attach to parent so serializer sees it
+    self._textures = self._textures or {}
+    table.insert(self._textures, tex)
+    table.insert(Flux._frames, tex)
+    return tex
+  end
   function frame:CreateLine(name)
     local ln = { _type = 'Line', _name = tostring(name or 'line_' .. tostring(math.random(1000,9999))) }
     table.insert(Flux._frames, ln)

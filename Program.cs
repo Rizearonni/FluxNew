@@ -20,6 +20,23 @@ class Program
         {
             try { Console.WriteLine($"UnobservedTaskException: {e.Exception.Message}"); } catch { }
         };
+        
+        // Generate placeholder textures if they don't exist
+        try
+        {
+            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            var checkPath = Path.Combine(baseDir, "Interface", "Buttons", "UI-CheckBox-Up.tga");
+            if (!File.Exists(checkPath))
+            {
+                Console.WriteLine("Generating placeholder textures...");
+                TestTextureGenerator.GeneratePlaceholderTextures(baseDir);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Failed to generate placeholder textures: {ex.Message}");
+        }
+        
         // If launched with --load-addon <path> then run the loader headless
         if (args != null && args.Length >= 2 && string.Equals(args[0], "--load-addon", StringComparison.OrdinalIgnoreCase))
         {

@@ -76,3 +76,4 @@ E:\FluxParser\flux-new\FluxNew\obj\Debug\net8.0\FluxNew.sourcelink.json
 E:\FluxParser\flux-new\FluxNew\bin\Debug\net8.0\AvaloniaEdit.dll
 E:\FluxParser\flux-new\FluxNew\bin\Debug\net8.0\serialize_frames.lua
 E:\FluxParser\flux-new\FluxNew\bin\Debug\net8.0\sample_frames.json
+e:\FluxParser\flux-new\FluxNew\bin\Debug\net8.0\SixLabors.ImageSharp.dll

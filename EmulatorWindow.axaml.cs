@@ -550,6 +550,31 @@ namespace FluxNew
 
             var closeBtn = this.FindControl<Button>("CloseButton");
             if (closeBtn != null) closeBtn.Click += (_, __) => this.Close();
+            
+            var renderFramesBtn = this.FindControl<Button>("RenderFramesButton");
+            if (renderFramesBtn != null)
+            {
+                renderFramesBtn.Click += (_, __) =>
+                {
+                    try
+                    {
+                        if (_canvas != null)
+                        {
+                            AppendToEmuConsole("Rendering frames from debug_frames.json...");
+                            FrameRenderer.RenderFramesToCanvas(_canvas);
+                            AppendToEmuConsole("Frame rendering complete");
+                        }
+                        else
+                        {
+                            AppendToEmuConsole("Error: Canvas not initialized");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        AppendToEmuConsole($"Render frames failed: {ex.Message}");
+                    }
+                };
+            }
         }
 
         // Public helper to load frames JSON (from serializer) into the emulator canvas.

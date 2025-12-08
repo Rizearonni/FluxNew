@@ -469,6 +469,22 @@
           "lib/net5.0/MicroCom.Runtime.dll": {}
         }
       },
+      "SixLabors.ImageSharp/3.1.0": {
+        "type": "package",
+        "compile": {
+          "lib/net6.0/SixLabors.ImageSharp.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net6.0/SixLabors.ImageSharp.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "build/SixLabors.ImageSharp.props": {}
+        }
+      },
       "SkiaSharp/2.88.9": {
         "type": "package",
         "dependencies": {
@@ -1210,6 +1226,22 @@
         "microcom.runtime.nuspec"
       ]
     },
+    "SixLabors.ImageSharp/3.1.0": {
+      "sha512": "ESlqDmrxIFxOd8VcKpyymA6uav51iXFp/j73fYcDMpIXWe2VEsjS2OL8nZGpvgt2Y1LKgQpM5ZpPJa/YlS73Pg==",
+      "type": "package",
+      "path": "sixlabors.imagesharp/3.1.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE",
+        "build/SixLabors.ImageSharp.props",
+        "lib/net6.0/SixLabors.ImageSharp.dll",
+        "lib/net6.0/SixLabors.ImageSharp.xml",
+        "sixlabors.imagesharp.128.png",
+        "sixlabors.imagesharp.3.1.0.nupkg.sha512",
+        "sixlabors.imagesharp.nuspec"
+      ]
+    },
     "SkiaSharp/2.88.9": {
       "sha512": "3MD5VHjXXieSHCleRLuaTXmL2pD0mB7CcOB1x2kA1I4bhptf4e3R27iM93264ZYuAq6mkUyX5XbcxnZvMJYc1Q==",
       "type": "package",
@@ -1440,7 +1472,8 @@
       "Avalonia.Desktop >= 11.3.9",
       "Avalonia.Diagnostics >= 11.3.9",
       "Avalonia.Fonts.Inter >= 11.3.9",
-      "Avalonia.Themes.Fluent >= 11.3.9"
+      "Avalonia.Themes.Fluent >= 11.3.9",
+      "SixLabors.ImageSharp >= 3.1.0"
     ]
   },
   "packageFolders": {
@@ -1450,11 +1483,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "E:\\FluxParser\\flux-new\\FluxNew\\FluxNew.csproj",
+      "projectUniqueName": "e:\\FluxParser\\flux-new\\FluxNew\\FluxNew.csproj",
       "projectName": "FluxNew",
-      "projectPath": "E:\\FluxParser\\flux-new\\FluxNew\\FluxNew.csproj",
+      "projectPath": "e:\\FluxParser\\flux-new\\FluxNew\\FluxNew.csproj",
       "packagesPath": "C:\\Users\\jkakj\\.nuget\\packages\\",
-      "outputPath": "E:\\FluxParser\\flux-new\\FluxNew\\obj\\",
+      "outputPath": "e:\\FluxParser\\flux-new\\FluxNew\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -1516,6 +1549,10 @@
           "Avalonia.Themes.Fluent": {
             "target": "Package",
             "version": "[11.3.9, )"
+          },
+          "SixLabors.ImageSharp": {
+            "target": "Package",
+            "version": "[3.1.0, )"
           }
         },
         "imports": [
@@ -1537,5 +1574,77 @@
         "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.307/PortableRuntimeIdentifierGraph.json"
       }
     }
-  }
+  },
+  "logs": [
+    {
+      "code": "NU1903",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'SixLabors.ImageSharp' 3.1.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-2cmq-823j-5qj8",
+      "libraryId": "SixLabors.ImageSharp",
+      "targetGraphs": [
+        "net8.0"
+      ]
+    },
+    {
+      "code": "NU1902",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'SixLabors.ImageSharp' 3.1.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-5x7m-6737-26cr",
+      "libraryId": "SixLabors.ImageSharp",
+      "targetGraphs": [
+        "net8.0"
+      ]
+    },
+    {
+      "code": "NU1903",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'SixLabors.ImageSharp' 3.1.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-63p8-c4ww-9cg7",
+      "libraryId": "SixLabors.ImageSharp",
+      "targetGraphs": [
+        "net8.0"
+      ]
+    },
+    {
+      "code": "NU1903",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'SixLabors.ImageSharp' 3.1.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-65x7-c272-7g7r",
+      "libraryId": "SixLabors.ImageSharp",
+      "targetGraphs": [
+        "net8.0"
+      ]
+    },
+    {
+      "code": "NU1902",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'SixLabors.ImageSharp' 3.1.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-g85r-6x2q-45w7",
+      "libraryId": "SixLabors.ImageSharp",
+      "targetGraphs": [
+        "net8.0"
+      ]
+    },
+    {
+      "code": "NU1902",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'SixLabors.ImageSharp' 3.1.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-qxrv-gp6x-rc23",
+      "libraryId": "SixLabors.ImageSharp",
+      "targetGraphs": [
+        "net8.0"
+      ]
+    },
+    {
+      "code": "NU1902",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'SixLabors.ImageSharp' 3.1.0 has a known moderate severity vulnerability, https://github.com/advisories/GHSA-rxmq-m78w-7wmc",
+      "libraryId": "SixLabors.ImageSharp",
+      "targetGraphs": [
+        "net8.0"
+      ]
+    }
+  ]
 }
