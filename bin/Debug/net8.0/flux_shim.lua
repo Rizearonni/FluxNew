@@ -7,20 +7,35 @@ Flux._host_calls = Flux._host_calls or {}
 -- data (useful for addons that keep data in local upvalues or populate
 -- their trees lazily). Fixers receive the addon name as a parameter.
 Flux._post_load_fixers = Flux._post_load_fixers or {}
-function Flux.RegisterPostLoadFixer(name, fn)
+-- Register a post-load fixer. Optional `opts` table may include:
+--  * enabled (boolean, default true)
+--  * order (number, default 1000) - lower numbers run earlier
+function Flux.RegisterPostLoadFixer(name, fn, opts)
   if type(fn) ~= 'function' then return false end
-  table.insert(Flux._post_load_fixers, { name = tostring(name or ''), fn = fn })
+  opts = opts or {}
+  local rec = { name = tostring(name or ''), fn = fn, opts = { enabled = (opts.enabled ~= false), order = tonumber(opts.order) or 1000 } }
+  table.insert(Flux._post_load_fixers, rec)
   return true
 end
+
+-- Apply registered fixers for the given addon name. Returns how many ran.
 function Flux.ApplyPostLoadFixers(addonName)
-  local okCount = 0
+  local list = {}
   for i,rec in ipairs(Flux._post_load_fixers or {}) do
-    pcall(function()
-      rec.fn(addonName)
-      okCount = okCount + 1
-    end)
+    table.insert(list, rec)
   end
-  return okCount
+  -- sort by order ascending
+  table.sort(list, function(a,b) return (a.opts and a.opts.order or 1000) < (b.opts and b.opts.order or 1000) end)
+  local ran = 0
+  for _,rec in ipairs(list) do
+    if not rec.opts or rec.opts.enabled then
+      pcall(function()
+        rec.fn(addonName)
+        ran = ran + 1
+      end)
+    end
+  end
+  return ran
 end
 
 -- convenience aliases used by some addons
