@@ -1,11 +1,12 @@
 {
   "version": 2,
-  "dgSpecHash": "umQcAcuICDg=",
+  "dgSpecHash": "XHzZxfyQyXw=",
   "success": true,
   "projectFilePath": "E:\\FluxParser\\flux-new\\FluxNew\\FluxNew.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\jkakj\\.nuget\\packages\\avalonia\\11.3.9\\avalonia.11.3.9.nupkg.sha512",
     "C:\\Users\\jkakj\\.nuget\\packages\\avalonia.angle.windows.natives\\2.1.25547.20250602\\avalonia.angle.windows.natives.2.1.25547.20250602.nupkg.sha512",
+    "C:\\Users\\jkakj\\.nuget\\packages\\avalonia.avaloniaedit\\11.3.0\\avalonia.avaloniaedit.11.3.0.nupkg.sha512",
     "C:\\Users\\jkakj\\.nuget\\packages\\avalonia.buildservices\\11.3.2\\avalonia.buildservices.11.3.2.nupkg.sha512",
     "C:\\Users\\jkakj\\.nuget\\packages\\avalonia.controls.colorpicker\\11.3.9\\avalonia.controls.colorpicker.11.3.9.nupkg.sha512",
     "C:\\Users\\jkakj\\.nuget\\packages\\avalonia.desktop\\11.3.9\\avalonia.desktop.11.3.9.nupkg.sha512",

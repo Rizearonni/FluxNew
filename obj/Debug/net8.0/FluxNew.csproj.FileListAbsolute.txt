@@ -72,3 +72,6 @@ E:\FluxParser\flux-new\FluxNew\obj\Debug\net8.0\refint\FluxNew.dll
 E:\FluxParser\flux-new\FluxNew\obj\Debug\net8.0\FluxNew.pdb
 E:\FluxParser\flux-new\FluxNew\obj\Debug\net8.0\FluxNew.genruntimeconfig.cache
 E:\FluxParser\flux-new\FluxNew\obj\Debug\net8.0\ref\FluxNew.dll
+E:\FluxParser\flux-new\FluxNew\obj\Debug\net8.0\FluxNew.sourcelink.json
+E:\FluxParser\flux-new\FluxNew\bin\Debug\net8.0\AvaloniaEdit.dll
+E:\FluxParser\flux-new\FluxNew\bin\Debug\net8.0\serialize_frames.lua

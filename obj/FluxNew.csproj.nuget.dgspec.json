@@ -54,6 +54,10 @@
               "target": "Package",
               "version": "[11.3.9, )"
             },
+            "Avalonia.AvaloniaEdit": {
+              "target": "Package",
+              "version": "[11.3.0, )"
+            },
             "Avalonia.Desktop": {
               "target": "Package",
               "version": "[11.3.9, )"

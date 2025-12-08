@@ -32,7 +32,8 @@ class Program
             var samplePath = Path.Combine(Environment.CurrentDirectory, "addons", "SampleAddon");
             if (Directory.Exists(samplePath))
             {
-                WoWApi.TryLoadAddonDirectory(samplePath);
+                var (ok, frames) = WoWApi.TryLoadAddonDirectory(samplePath);
+                Console.WriteLine($"Program: sample addon load success={ok}, frames={frames}");
             }
             else
             {

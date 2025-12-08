@@ -24,5 +24,11 @@ build_property.EnableCodeStyleSeverity =
 [E:/FluxParser/flux-new/FluxNew/App.axaml]
 build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
 
+[E:/FluxParser/flux-new/FluxNew/EmulatorWindow.axaml]
+build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
+
 [E:/FluxParser/flux-new/FluxNew/MainWindow.axaml]
+build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
+
+[E:/FluxParser/flux-new/FluxNew/Styles/ModernTheme.axaml]
 build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml

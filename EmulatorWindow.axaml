@@ -1,0 +1,84 @@
+<Window xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    x:Class="FluxNew.EmulatorWindow"
+    Title="Flux — Emulator"
+    Width="1000" Height="700">
+
+  <!-- Increase bottom row so the emulator console is visible -->
+  <Grid RowDefinitions="48,*,160">
+    <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto" Margin="12,0">
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+          <TextBlock Text="Emulator" FontSize="14" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" />
+          <TextBlock Text="— interactive addon frames" Foreground="{StaticResource SubtleForegroundBrush}" VerticalAlignment="Center" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="8">
+          <Button x:Name="AddFrameButton" Classes="flat">Add Frame</Button>
+          <Button x:Name="CloseButton" Classes="flat">Close</Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="280,*,280" Margin="0">
+      <!-- Addon explorer (left) -->
+      <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0" Padding="8">
+        <StackPanel>
+          <TextBlock Classes="header" Text="Addons" />
+          <ListBox Name="AddonList" Margin="0,8,0,0">
+            <!-- items populated at runtime -->
+          </ListBox>
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Column="1" Background="{StaticResource BackgroundBrush}" Padding="8">
+        <Canvas Name="EmuCanvas" Background="{StaticResource BackgroundBrush}" />
+      </Border>
+
+      <Border Grid.Column="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
+        <StackPanel Margin="8" Spacing="8">
+          <TextBlock Classes="header" Text="Inspector" />
+
+          <TextBlock Text="Selected Frame:" Foreground="{StaticResource SubtleForegroundBrush}" />
+          <TextBlock Name="SelectedFrameLabel" Text="(none)" Margin="0,0,0,8" />
+
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Text="X" VerticalAlignment="Center" Width="20" />
+            <TextBox Name="PosXBox" Width="200" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Text="Y" VerticalAlignment="Center" Width="20" />
+            <TextBox Name="PosYBox" Width="200" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Text="W" VerticalAlignment="Center" Width="20" />
+            <TextBox Name="WidthBox" Width="200" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Text="H" VerticalAlignment="Center" Width="20" />
+            <TextBox Name="HeightBox" Width="200" />
+          </StackPanel>
+
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+            <Button Name="ApplyButton" Classes="flat">Apply</Button>
+            <Button Name="DeleteButton" Classes="flat">Delete</Button>
+          </StackPanel>
+
+          <TextBlock Text="Hints" Classes="header" Margin="0,16,0,4" />
+          <TextBlock Foreground="{StaticResource SubtleForegroundBrush}" TextWrapping="Wrap">Click a frame to select. Drag to move. Use the grip to resize. Use the inspector to manually set X/Y/Width/Height.</TextBlock>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <Border Grid.Row="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
+      <Grid RowDefinitions="Auto,1*" Margin="8">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="Emulator ready" VerticalAlignment="Center" Foreground="{StaticResource SubtleForegroundBrush}" />
+          <TextBlock Grid.Column="1" Text="Drag frames to move, resize from bottom-right" Margin="12,0" VerticalAlignment="Center" Foreground="{StaticResource SubtleForegroundBrush}" />
+        </Grid>
+
+        <TextBox Name="EmuConsole" Grid.Row="1" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Background="{StaticResource BackgroundBrush}" Foreground="{StaticResource ForegroundBrush}" Margin="0,8,0,0" />
+      </Grid>
+    </Border>
+  </Grid>
+
+</Window>

@@ -1,9 +1,105 @@
 <Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-        x:Class="FluxNew.MainWindow"
-        Title="FluxNew">
-    Welcome to Avalonia!
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    
+                xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
+                x:Class="FluxNew.MainWindow"
+                Title="Flux — Flux Emulator">
+
+    <Grid RowDefinitions="48,*,24">
+        <!-- Top bar -->
+        <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" Grid.Row="0">
+            <Grid ColumnDefinitions="Auto,*,Auto" Margin="12,0">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="10">
+                    <TextBlock Text="Flux" FontSize="16" FontWeight="Bold" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="— Addon emulator" Foreground="{StaticResource SubtleForegroundBrush}" VerticalAlignment="Center" />
+                </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                    <Button x:Name="FileButton" Classes="flat">File</Button>
+                    <Button x:Name="EditButton" Classes="flat">Edit</Button>
+                    <Button x:Name="ViewButton" Classes="flat">View</Button>
+                    <Button x:Name="HelpButton" Classes="flat">Help</Button>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Spacing="8">
+                    <Button Classes="flat">●</Button>
+                    <Button Classes="flat">⟳</Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Main content -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>64,300,*,280</Grid.ColumnDefinitions>
+
+            <!-- Left quick toolbar -->
+            <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
+                <StackPanel Margin="8" VerticalAlignment="Top" Spacing="8">
+                    <Button Classes="flat"></Button>
+                    <Button Classes="flat"></Button>
+                    <Button Classes="flat">⚙</Button>
+                </StackPanel>
+            </Border>
+
+            <!-- File explorer -->
+            <Border Grid.Column="1" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,1,0">
+                <StackPanel Margin="8">
+                    <TextBlock Classes="header" Text="File Explorer" />
+                    <ListBox x:Name="FileList" Margin="0,8,0,0">
+                        <ListBoxItem>addons/SampleAddon/main.lua</ListBoxItem>
+                        <ListBoxItem>KopiLuaRunner.cs</ListBoxItem>
+                        <ListBoxItem>WoWApi.cs</ListBoxItem>
+                    </ListBox>
+                </StackPanel>
+            </Border>
+
+            <!-- Editor area -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>Auto,*</Grid.RowDefinitions>
+                <!-- Tabs -->
+                <StackPanel Orientation="Horizontal" Background="{StaticResource BackgroundBrush}" Spacing="6" Margin="8">
+                    <Border Background="{StaticResource PanelBrush}" CornerRadius="4" Padding="6">
+                        <TextBlock Text="main.lua" />
+                    </Border>
+                    <Border Background="Transparent" CornerRadius="4" Padding="6">
+                        <TextBlock Foreground="{StaticResource SubtleForegroundBrush}" Text="KopiLuaRunner.cs" />
+                    </Border>
+                </StackPanel>
+
+                <ContentControl Grid.Row="1" Name="EditorHost" />
+            </Grid>
+
+            <!-- Right panel -->
+            <Border Grid.Column="3" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
+                <Grid RowDefinitions="Auto,*,120">
+                    <StackPanel Margin="8" Grid.Row="0">
+                        <TextBlock Classes="header" Text="Inspector" />
+                        <TextBlock Foreground="{StaticResource SubtleForegroundBrush}" Margin="0,8,0,0">No selection</TextBlock>
+                    </StackPanel>
+
+                    <StackPanel Margin="8" Grid.Row="1">
+                        <TextBlock Classes="header" Text="Properties" />
+                        <TextBlock Foreground="{StaticResource SubtleForegroundBrush}" Margin="0,8,0,0">(select a control to inspect)</TextBlock>
+                    </StackPanel>
+
+                    <StackPanel Margin="8" Grid.Row="2">
+                        <TextBlock Classes="header" Text="Debug Console" />
+                        <TextBox Name="DebugConsole" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Height="100" Background="{StaticResource BackgroundBrush}" Foreground="{StaticResource ForegroundBrush}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- Status bar -->
+        <Border Grid.Row="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
+            <Grid ColumnDefinitions="*,Auto,Auto" Margin="8">
+                <TextBlock Text="Ready" VerticalAlignment="Center" Foreground="{StaticResource SubtleForegroundBrush}" />
+                <TextBlock Grid.Column="1" Text="Ln 1, Col 1" Margin="12,0" VerticalAlignment="Center" Foreground="{StaticResource SubtleForegroundBrush}" />
+                <TextBlock Grid.Column="2" Text="CPU 2%  MEM 12%" Margin="12,0" VerticalAlignment="Center" Foreground="{StaticResource SubtleForegroundBrush}" />
+            </Grid>
+        </Border>
+    </Grid>
+
 </Window>
