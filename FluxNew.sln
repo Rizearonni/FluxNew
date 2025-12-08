@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluxNew", "FluxNew.csproj", "{D7855019-3D7B-DDA4-933F-A3EE7607CEEE}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D7855019-3D7B-DDA4-933F-A3EE7607CEEE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D7855019-3D7B-DDA4-933F-A3EE7607CEEE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D7855019-3D7B-DDA4-933F-A3EE7607CEEE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D7855019-3D7B-DDA4-933F-A3EE7607CEEE}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {257F4ECD-F89D-4B32-9553-310A749FB2D6}
+	EndGlobalSection
+EndGlobal
