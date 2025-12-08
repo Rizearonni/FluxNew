@@ -38,7 +38,71 @@ class Program
                         try
                         {
                             var tmp = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "flux_invoke_attune_" + Guid.NewGuid().ToString("N") + ".lua");
-                            try { System.IO.File.WriteAllText(tmp, "if Attune_Frame then Attune_Frame() end"); var (okI, outI) = KopiLuaRunner.TryRunFile(tmp); } catch { } finally { try { if (System.IO.File.Exists(tmp)) System.IO.File.Delete(tmp); } catch { } }
+                            try {
+                                var script = "-- Aggressive Attune fixer: expose attunelocal_tree, synthesize fallback, and update TreeGroup widgets\n" +
+                                             "local function try_extract_upvalue(fn, name)\n" +
+                                             "  if not (fn and debug and debug.getupvalue) then return nil end\n" +
+                                             "  for i=1,200 do local n,v = debug.getupvalue(fn, i); if not n then break end; if n == name then return v end end\n" +
+                                             "  return nil\n" +
+                                             "end\n" +
+                                             "-- try to extract attunelocal_tree from Attune_LoadTree or any nearby function\n" +
+                                             "if Attune_LoadTree then\n" +
+                                             "  local up = try_extract_upvalue(Attune_LoadTree, 'attunelocal_tree')\n" +
+                                             "  if up then _G.attunelocal_tree = up end\n" +
+                                             "  -- call it to ensure it populates/updates internal state\n" +
+                                             "  pcall(function() Attune_LoadTree() end)\n" +
+                                             "  -- re-check after call\n" +
+                                             "  if not _G.attunelocal_tree then local up2 = try_extract_upvalue(Attune_LoadTree, 'attunelocal_tree'); if up2 then _G.attunelocal_tree = up2 end end\n" +
+                                             "end\n" +
+                                             "-- debug outputs\n" +
+                                             "if Attune_Data then print('FLUX-DBG: Attune_Data.attunes=' .. tostring(Attune_Data and #Attune_Data.attunes or 'nil')) end\n" +
+                                             "if Attune_DB then print('FLUX-DBG: Attune_DB present') end\n" +
+                                             "-- If we still don't have an attunelocal_tree, attempt to synthesize one from Attune_Data.attunes\n" +
+                                             "local function synth_from_data()\n" +
+                                             "  if not (Attune_Data and Attune_Data.attunes and type(Attune_Data.attunes) == 'table') then return nil end\n" +
+                                             "  local synth = {}\n" +
+                                             "  local expacMap = {}\n" +
+                                             "  for i,a in pairs(Attune_Data.attunes) do\n" +
+                                             "    local exp = tostring(a.EXPAC or 'Unknown')\n" +
+                                             "    local grp = tostring(a.GROUP or 'Default')\n" +
+                                             "    expacMap[exp] = expacMap[exp] or {}\n" +
+                                             "    local gmap = expacMap[exp]\n" +
+                                             "    gmap[grp] = gmap[grp] or { value = grp, text = grp, children = {} }\n" +
+                                             "    local text = a.NAME or tostring(a.ID)\n" +
+                                             "    table.insert(gmap[grp].children, { value = a.ID, text = text })\n" +
+                                             "  end\n" +
+                                             "  for exp, groups in pairs(expacMap) do\n" +
+                                             "    local expNode = { value = exp, text = exp, children = {} }\n" +
+                                             "    for _, g in pairs(groups) do table.insert(expNode.children, g) end\n" +
+                                             "    table.insert(synth, expNode)\n" +
+                                             "  end\n" +
+                                             "  return synth\n" +
+                                             "end\n" +
+                                             "if not _G.attunelocal_tree or #(_G.attunelocal_tree or {}) == 0 then\n" +
+                                             "  local s = synth_from_data()\n" +
+                                             "  if s and #s > 0 then\n" +
+                                             "    print('FLUX-DBG: synthesized tree count=' .. tostring(#s))\n" +
+                                             "    _G.attunelocal_tree = s\n" +
+                                             "  else\n" +
+                                             "    print('FLUX-DBG: no synth tree available')\n" +
+                                             "  end\n" +
+                                             "end\n" +
+                                             "-- Propagate to any existing AceGUI TreeGroup widgets: set their tree if empty\n" +
+                                             "pcall(function()\n" +
+                                             "  local gui = (LibStub and LibStub._libs and LibStub._libs['AceGUI-3.0']) or nil\n" +
+                                             "  if gui and gui._widgets then\n" +
+                                             "    for _,w in ipairs(gui._widgets) do\n" +
+                                             "      if w and w._kind == 'TreeGroup' then\n" +
+                                             "        pcall(function() if not w.tree or #w.tree == 0 then w:SetTree(_G.attunelocal_tree) end end)\n" +
+                                             "      end\n" +
+                                             "    end\n" +
+                                             "  end\n" +
+                                             "end)\n" +
+                                             "print('FLUX-DBG: after Attune fixer attunelocal_tree=' .. tostring(#(_G.attunelocal_tree or {})))\n" +
+                                             "if Attune_Frame then pcall(Attune_Frame) end";
+                                System.IO.File.WriteAllText(tmp, script);
+                                var (okI, outI) = KopiLuaRunner.TryRunFile(tmp);
+                            } catch { } finally { try { if (System.IO.File.Exists(tmp)) System.IO.File.Delete(tmp); } catch { } }
                         }
                         catch { }
                         // attempt to run the serializer directly again to capture frames after UI open

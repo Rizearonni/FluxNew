@@ -15,26 +15,26 @@ build_property.PlatformNeutralAssembly =
 build_property.EnforceExtendedAnalyzerRules = 
 build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property.RootNamespace = FluxNew
-build_property.ProjectDir = e:\FluxParser\flux-new\FluxNew\
+build_property.ProjectDir = E:\FluxParser\flux-new\FluxNew\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.EffectiveAnalysisLevelStyle = 8.0
 build_property.EnableCodeStyleSeverity = 
 
-[e:/FluxParser/flux-new/FluxNew/App.axaml]
+[E:/FluxParser/flux-new/FluxNew/App.axaml]
 build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
 
-[e:/FluxParser/flux-new/FluxNew/EmulatorWindow.axaml]
+[E:/FluxParser/flux-new/FluxNew/EmulatorWindow.axaml]
 build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
 
-[e:/FluxParser/flux-new/FluxNew/MainWindow.axaml]
+[E:/FluxParser/flux-new/FluxNew/MainWindow.axaml]
 build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
 
-[e:/FluxParser/flux-new/FluxNew/PresetEditorWindow.axaml]
+[E:/FluxParser/flux-new/FluxNew/PresetEditorWindow.axaml]
 build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
 
-[e:/FluxParser/flux-new/FluxNew/Styles/ModernTheme.axaml]
+[E:/FluxParser/flux-new/FluxNew/Styles/ModernTheme.axaml]
 build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
 
-[e:/FluxParser/flux-new/FluxNew/Styles/ModuleTextures.axaml]
+[E:/FluxParser/flux-new/FluxNew/Styles/ModuleTextures.axaml]
 build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml

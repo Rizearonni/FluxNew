@@ -31,6 +31,26 @@ namespace FluxNew
 Flux = Flux or {}
 Flux._frames = Flux._frames or {}
 Flux._host_calls = Flux._host_calls or {}
+-- Post-load fixer registry: allow external scripts to register functions
+-- that will run after an addon is loaded so they can patch or synthesize
+-- data (useful for addons that keep data in local upvalues or populate
+-- their trees lazily). Fixers receive the addon name as a parameter.
+Flux._post_load_fixers = Flux._post_load_fixers or {}
+function Flux.RegisterPostLoadFixer(name, fn)
+  if type(fn) ~= 'function' then return false end
+  table.insert(Flux._post_load_fixers, { name = tostring(name or ''), fn = fn })
+  return true
+end
+function Flux.ApplyPostLoadFixers(addonName)
+  local okCount = 0
+  for i,rec in ipairs(Flux._post_load_fixers or {}) do
+    pcall(function()
+      rec.fn(addonName)
+      okCount = okCount + 1
+    end)
+  end
+  return okCount
+end
 
 -- convenience aliases used by some addons
 if not tinsert then tinsert = table.insert end
@@ -286,13 +306,18 @@ end
         -- expose an `obj` reference (many addons expect an `obj` field)
         widget.obj = widget.frame
         widget._proxy = widget
+        widget._kind = kind
+        acegui._widgets = acegui._widgets or {}
+        table.insert(acegui._widgets, widget)
 
         -- TreeGroup specific helper
         function widget:SetTree(tree)
           self.tree = tree or {}
           self.localstatus = self.localstatus or { groups = {} }
           pcall(function() print('FLUX-DBG: SetTree count=' .. tostring(#self.tree or 0)) end)
-          -- Walk the tree and create simple node frames with attached FontStrings
+          pcall(function() if debug and debug.traceback then print('FLUX-DBG: SetTree caller trace:\n' .. debug.traceback()) end end)
+
+          -- Create node frames for existing nodes
           local function walk(nodes, parentFrame, prefix)
             for i,node in ipairs(nodes) do
               local nid = tostring(i)
@@ -300,6 +325,9 @@ end
               local nodeFrame = CreateFrame('Frame', (widget.frame._name or '') .. '_node_' .. tostring(math.random(100000,999999)), parentFrame or widget.frame)
               pcall(function() print('FLUX-DBG: SetTree created node frame for ' .. tostring(node.text or nname)) end)
               node._frame = nodeFrame
+              node._nodePath = (prefix or '') .. tostring(i)
+              -- Mirror the node path onto the actual frame so the serializer can pick it up
+              nodeFrame._nodePath = node._nodePath
               -- attach a FontString with the node text
               local fs = nodeFrame:CreateFontString('node_label')
               fs.text = tostring(node.text or '')
@@ -316,15 +344,117 @@ end
               end
             end
           end
-          pcall(function() walk(self.tree, widget.frame, '') end)
+
+          -- Watcher: intercept future table insertions so addons that populate the tree later are captured
+          local function watch(tbl, parentFrame, prefix)
+            if type(tbl) ~= 'table' then return end
+            local mt = getmetatable(tbl) or {}
+            if mt.__flux_watch then return end
+            local old_newindex = mt.__newindex
+            mt.__flux_watch = true
+            mt.__newindex = function(t,k,v)
+              if old_newindex then
+                old_newindex(t,k,v)
+              else
+                rawset(t,k,v)
+              end
+              -- if a table assigned, recursively watch it
+              if type(v) == 'table' then watch(v, parentFrame, (prefix or '') .. tostring(k) .. '/') end
+              -- if numeric index added, materialize a node frame for it
+              if type(k) == 'number' then
+                local node = v
+                local nodeFrame = CreateFrame('Frame', (widget.frame._name or '') .. '_node_' .. tostring(math.random(100000,999999)), parentFrame or widget.frame)
+                node._frame = nodeFrame
+                node._nodePath = (prefix or '') .. tostring(k)
+                nodeFrame._nodePath = node._nodePath
+                local fs = nodeFrame:CreateFontString('node_label')
+                fs.text = tostring(node.text or '')
+                nodeFrame._parent = parentFrame or widget.frame
+                parentFrame = parentFrame or widget.frame
+                parentFrame._children = parentFrame._children or {}
+                table.insert(parentFrame._children, nodeFrame)
+                table.insert(widget.localstatus.groups, { text = node.text or '', children = node.children and #node.children or 0 })
+                if node.children then watch(node.children, nodeFrame, (prefix or '') .. tostring(k) .. '/') end
+                pcall(function() print('FLUX-DBG: watch created node for key='..tostring(k)..' text='..tostring(node.text or '')) end)
+              end
+            end
+            setmetatable(tbl, mt)
+            -- recursively watch existing numeric elements
+            for i,v in ipairs(tbl) do
+              if type(v) == 'table' then watch(v, parentFrame, (prefix or '') .. tostring(i) .. '/') end
+            end
+          end
+
+          -- If there are existing nodes, materialize them now; always set a watcher to catch future mutations
+          pcall(function() if #self.tree > 0 then walk(self.tree, widget.frame, '') else pcall(function() print('FLUX-DBG: SetTree initial tree empty; attaching watcher') end) end end)
+          pcall(function() watch(self.tree, widget.frame, '') end)
         end
 
+          -- For TreeGroup widgets: attempt to invoke Attune_LoadTree (if present) so Attune's local tree is populated,
+          -- then apply any populated `attunelocal_tree` to the widget. This ensures the AddOn's tree data
+          -- is available when the UI finishes creation.
+          pcall(function()
+            if kind == 'TreeGroup' then
+              pcall(function() if Attune_LoadTree then Attune_LoadTree() end end)
+              -- Try to apply Attune's local tree if visible as a global (may be local in the addon chunk)
+              if attunelocal_tree and type(attunelocal_tree) == 'table' and #attunelocal_tree > 0 then
+                pcall(function() widget:SetTree(attunelocal_tree) end)
+              else
+                -- Fallback: attempt to synthesize a tree from Attune_Data (if present)
+                pcall(function()
+                  if Attune_Data and Attune_Data.attunes and type(Attune_Data.attunes) == 'table' then
+                    local synth = {}
+                    local expac = ''
+                    local group = ''
+                    local expacNode = nil
+                    local groupNode = nil
+                    for i,a in pairs(Attune_Data.attunes) do
+                      if group ~= a.GROUP or expac ~= a.EXPAC then
+                        if groupNode and expacNode then table.insert(expacNode.children, groupNode) end
+                        if expac ~= a.EXPAC then
+                          if expacNode then table.insert(synth, expacNode) end
+                          expacNode = { value = a.EXPAC, text = a.EXPAC, children = {} }
+                          expac = a.EXPAC
+                        end
+                        groupNode = { value = a.GROUP, text = tostring(a.GROUP), children = {} }
+                        group = a.GROUP
+                      end
+                      if a.FACTION == UnitFactionGroup('player') or a.FACTION == 'Both' then
+                        local text = a.NAME or tostring(a.ID)
+                        local attuneNode = { value = a.ID, text = text }
+                        table.insert(groupNode.children, attuneNode)
+                      end
+                    end
+                    if groupNode and expacNode then table.insert(expacNode.children, groupNode) end
+                    if expacNode then table.insert(synth, expacNode) end
+                    if #synth > 0 then pcall(function() print('FLUX-DBG: applying synthesized tree count=' .. tostring(#synth)); widget:SetTree(synth) end) end
+                  end
+                end)
+              end
+            end
+          end)
         return widget
       end
     function acegui:Create(kind, name)
       return makeWidget(kind, name)
     end
     LibStub._libs['AceGUI-3.0'] = acegui
+    -- Watch for global assignments to `attunelocal_tree` and propagate to any existing TreeGroup widgets
+    pcall(function()
+      local gmt = getmetatable(_G) or {}
+      local old_newindex = gmt.__newindex
+      gmt.__newindex = function(t,k,v)
+        if old_newindex then old_newindex(t,k,v) else rawset(t,k,v) end
+        if k == 'attunelocal_tree' and type(v) == 'table' then
+          pcall(function()
+            for _, w in ipairs(acegui._widgets or {}) do
+              if w and w._kind == 'TreeGroup' then pcall(function() w:SetTree(v) end) end
+            end
+          end)
+        end
+      end
+      setmetatable(_G, gmt)
+    end)
   end
 
   -- Minimal LibDataBroker stub
@@ -601,6 +731,19 @@ end
               return (false, string.Empty);
             }
 
+            // Attempt to load optional post-load fixer registrations so callers
+            // can register per-addon fixers that run after ADDON_LOADED.
+            try
+            {
+              var fixersPath = Path.Combine(AppContext.BaseDirectory ?? Environment.CurrentDirectory, "postload_fixers.lua");
+              if (File.Exists(fixersPath))
+              {
+                var (okFix, resFix) = KopiLuaRunner.TryRunFile(fixersPath);
+                Console.WriteLine($"Loaded postload_fixers.lua: success={okFix}, resLen={(resFix?.Length ?? 0)}");
+              }
+            }
+            catch { }
+
             // Execute discovered files using a per-file wrapper that uses xpcall(debug.traceback)
             // to capture file-level tracebacks and ensure the code executes in the
             // native lua_State via TryRunFile. We always use the wrapper approach
@@ -695,6 +838,12 @@ end
               Console.WriteLine($"Dispatched PLAYER_LOGIN: success={evOk2}");
               var (evOk3, evRes3) = KopiLuaRunner.TryRun("_DispatchEvent('PLAYER_ENTERING_WORLD')");
               Console.WriteLine($"Dispatched PLAYER_ENTERING_WORLD: success={evOk3}");
+              try
+              {
+                var (pfOk, pfRes) = KopiLuaRunner.TryRun($"if Flux and Flux.ApplyPostLoadFixers then return tostring(Flux.ApplyPostLoadFixers('{Path.GetFileName(addonPath)}')) end");
+                Console.WriteLine($"Applied post-load fixers for '{Path.GetFileName(addonPath)}': success={pfOk}, ran={pfRes}");
+              }
+              catch { }
             }
             catch (Exception ex)
             {

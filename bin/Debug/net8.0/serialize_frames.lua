@@ -33,10 +33,14 @@ for i,f in ipairs(Flux._frames) do
   local entry = nil
   if (f._type or '') == 'FontString' then
     local text = q(f.text or f[1] or '')
-    local parent = q((f.parent and f.parent._name) or '')
-    entry = '{"name":'..name..',"type":'..ftype..',"text":'..text..',"parent":'..parent..'}'
+    local parent = f.parent and f.parent._name or ''
+    local parentNodePath = ''
+    if f.parent and f.parent._nodePath then parentNodePath = tostring(f.parent._nodePath) end
+    entry = '{"name":'..name..',"type":'..ftype..',"text":'..text..',"parent":'..q(parent)..',"parentNodePath":'..q(parentNodePath)..'}'
   else
-    entry = '{"name":'..name..',"type":'..ftype..',"shown":'..shown..',"x":'..x..',"y":'..y..',"w":'..w..',"h":'..h..',"scale":'..scale..',"anchors":'..anchorStr..',"children":'..childStr..'}'
+    -- include nodePath when available (populated by SetTree materialization)
+    local nodePath = f._nodePath or ''
+    entry = '{"name":'..name..',"type":'..ftype..',"shown":'..shown..',"x":'..x..',"y":'..y..',"w":'..w..',"h":'..h..',"scale":'..scale..',"nodePath":'..q(nodePath)..',"anchors":'..anchorStr..',"children":'..childStr..'}'
   end
   table.insert(out, entry)
 end
