@@ -331,8 +331,20 @@ namespace FluxNew
                                         {
                                             var holder = CreateEmuFrame(80, 80, 220, 140, string.IsNullOrEmpty(name) ? ftype : name);
                                             _canvas?.Children.Add(holder);
-                                            Canvas.SetLeft(holder, 80);
-                                            Canvas.SetTop(holder, 80);
+                                            // clamp initial placement into canvas
+                                            try
+                                            {
+                                                double w = 0, h = 0;
+                                                if (holder is Canvas tmpHolderCanvas)
+                                                {
+                                                    var b = tmpHolderCanvas.Children.OfType<Border>().FirstOrDefault();
+                                                    if (b != null) { w = b.Width; h = b.Height; }
+                                                }
+                                                var (cl, ct) = ClampToCanvas(80, 80, w, h);
+                                                Canvas.SetLeft(holder, cl);
+                                                Canvas.SetTop(holder, ct);
+                                            }
+                                            catch { Canvas.SetLeft(holder, 80); Canvas.SetTop(holder, 80); }
                                             if (holder is Canvas holderCanvas) _liveFrames[name] = holderCanvas;
                                             AppendToEmuConsole($"Created frame '{name}' (type={ftype})");
                                         }
@@ -376,13 +388,21 @@ namespace FluxNew
                                             {
                                                 var px = Canvas.GetLeft(parentHolder);
                                                 var py = Canvas.GetTop(parentHolder);
-                                                Canvas.SetLeft(holder, px + x);
-                                                Canvas.SetTop(holder, py + y);
+                                                double w = 0, h = 0;
+                                                var b = parentHolder.Children.OfType<Border>().FirstOrDefault();
+                                                if (b != null) { w = b.Width; h = b.Height; }
+                                                var (cl, ct) = ClampToCanvas(px + x, py + y, w, h);
+                                                Canvas.SetLeft(holder, cl);
+                                                Canvas.SetTop(holder, ct);
                                             }
                                             else
                                             {
-                                                Canvas.SetLeft(holder, x);
-                                                Canvas.SetTop(holder, y);
+                                                double w = 0, h = 0;
+                                                var b = holder.Children.OfType<Border>().FirstOrDefault();
+                                                if (b != null) { w = b.Width; h = b.Height; }
+                                                var (cl, ct) = ClampToCanvas(x, y, w, h);
+                                                Canvas.SetLeft(holder, cl);
+                                                Canvas.SetTop(holder, ct);
                                             }
                                         }
                                     }
@@ -575,6 +595,30 @@ namespace FluxNew
                     }
                 };
             }
+        }
+
+        // Clamp a desired left/top so the control's bounds remain fully inside the emulator canvas.
+        private (double left, double top) ClampToCanvas(double left, double top, double width, double height)
+        {
+            try
+            {
+                if (_canvas == null) return (left, top);
+                var cw = _canvas.Bounds.Width;
+                var ch = _canvas.Bounds.Height;
+                if (double.IsNaN(cw) || double.IsNaN(ch) || cw <= 0 || ch <= 0) return (left, top);
+                // ensure values are finite
+                if (double.IsNaN(left) || double.IsInfinity(left)) left = 0;
+                if (double.IsNaN(top) || double.IsInfinity(top)) top = 0;
+                if (double.IsNaN(width) || double.IsInfinity(width) || width < 0) width = 0;
+                if (double.IsNaN(height) || double.IsInfinity(height) || height < 0) height = 0;
+
+                var maxLeft = Math.Max(0, cw - width);
+                var maxTop = Math.Max(0, ch - height);
+                var nx = Math.Min(Math.Max(0, left), maxLeft);
+                var ny = Math.Min(Math.Max(0, top), maxTop);
+                return (nx, ny);
+            }
+            catch { return (left, top); }
         }
 
         // Public helper to load frames JSON (from serializer) into the emulator canvas.
@@ -1468,8 +1512,11 @@ namespace FluxNew
                 var cur = e.GetPosition(_canvas);
                 var dx = cur.X - dragStart.X;
                 var dy = cur.Y - dragStart.Y;
-                Canvas.SetLeft(holder, Math.Max(0, startLeft + dx));
-                Canvas.SetTop(holder, Math.Max(0, startTop + dy));
+                var b = holder.Children.OfType<Border>().FirstOrDefault();
+                double hbW = b?.Width ?? 0, hbH = b?.Height ?? 0;
+                var (nLeft, nTop) = ClampToCanvas(startLeft + dx, startTop + dy, hbW, hbH);
+                Canvas.SetLeft(holder, nLeft);
+                Canvas.SetTop(holder, nTop);
                 e.Handled = true;
             };
 
@@ -1548,8 +1595,19 @@ namespace FluxNew
             // ensure holder sizing matches border
             border.AttachedToVisualTree += (_, __) =>
             {
-                Canvas.SetLeft(holder, left);
-                Canvas.SetTop(holder, top);
+                try
+                {
+                    var b = holder.Children.OfType<Border>().FirstOrDefault();
+                    double w = b?.Width ?? 0, h = b?.Height ?? 0;
+                    var (cl, ct) = ClampToCanvas(left, top, w, h);
+                    Canvas.SetLeft(holder, cl);
+                    Canvas.SetTop(holder, ct);
+                }
+                catch
+                {
+                    Canvas.SetLeft(holder, left);
+                    Canvas.SetTop(holder, top);
+                }
             };
 
             // helper to set initial style

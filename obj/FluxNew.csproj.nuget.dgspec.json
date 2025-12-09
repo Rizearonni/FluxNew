@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "e:\\FluxParser\\flux-new\\FluxNew\\FluxNew.csproj": {}
+    "E:\\FluxParser\\flux-new\\FluxNew\\FluxNew.csproj": {}
   },
   "projects": {
-    "e:\\FluxParser\\flux-new\\FluxNew\\FluxNew.csproj": {
+    "E:\\FluxParser\\flux-new\\FluxNew\\FluxNew.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "e:\\FluxParser\\flux-new\\FluxNew\\FluxNew.csproj",
+        "projectUniqueName": "E:\\FluxParser\\flux-new\\FluxNew\\FluxNew.csproj",
         "projectName": "FluxNew",
-        "projectPath": "e:\\FluxParser\\flux-new\\FluxNew\\FluxNew.csproj",
+        "projectPath": "E:\\FluxParser\\flux-new\\FluxNew\\FluxNew.csproj",
         "packagesPath": "C:\\Users\\jkakj\\.nuget\\packages\\",
-        "outputPath": "e:\\FluxParser\\flux-new\\FluxNew\\obj\\",
+        "outputPath": "E:\\FluxParser\\flux-new\\FluxNew\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

@@ -314,6 +314,22 @@ end
               node._nodePath = (prefix or '') .. tostring(i)
               -- Mirror the node path onto the actual frame so the serializer can pick it up
               nodeFrame._nodePath = node._nodePath
+              
+              -- Create icon texture for the node (folder icon or expand/collapse indicator)
+              local iconTex = nodeFrame:CreateTexture('node_icon', 'ARTWORK')
+              if node.icon then
+                -- Use node-specific icon if provided
+                iconTex:SetTexture(node.icon)
+              elseif node.children and #node.children > 0 then
+                -- Parent node: use folder icon
+                iconTex:SetTexture('Interface\\Buttons\\UI-PlusButton-Up')
+              else
+                -- Leaf node: use document icon  
+                iconTex:SetTexture('Interface\\Icons\\INV_Misc_Note_01')
+              end
+              iconTex:SetSize(16, 16)
+              iconTex:SetPoint('LEFT', nodeFrame, 'LEFT', 2, 0)
+              
               -- attach a FontString with the node text
               local fs = nodeFrame:CreateFontString('node_label')
               fs.text = tostring(node.text or '')
@@ -473,11 +489,29 @@ local function join(...) local t={} for i=1,select('#',...) do t[i]=tostring(sel
 function print(...) io.write(join(...) .. '\n') end
 
 function CreateFrame(ftype, name, parent)
-  local frame = { _type=ftype, _name=name, _events = {}, scripts = {}, _points = {}, _children = {}, _shown = false }
+  -- If caller provided a global name and a frame with that name already exists in _G,
+  -- return the existing frame (matches WoW behavior where CreateFrame with a name
+  -- returns the existing global frame rather than creating a new one).
+  if name and name ~= '' and type(_G[name]) == 'table' then
+    return _G[name]
+  end
+
+  -- Ensure frames have a usable name for serialization/lookup. If caller didn't provide
+  -- a name, generate a stable-ish unique name so other frames can reference it.
+  local fname = name
+  if not fname or fname == '' then
+    fname = tostring(ftype) .. '_' .. tostring(math.random(100000,999999))
+  end
+
+  local frame = { _type=ftype, _name=fname, _events = {}, scripts = {}, _points = {}, _children = {}, _shown = false }
 
   -- record creation for host (so the C# side can create a visual placeholder)
   pcall(function()
     table.insert(Flux._frames, frame)
+    -- record a runtime tostring(frame) -> stable name map so the serializer can
+    -- resolve stringified table identifiers ('table: 0x...') back to names.
+    Flux._tostring_map = Flux._tostring_map or {}
+    Flux._tostring_map[tostring(frame)] = fname
     local entry = { cmd = 'CreateFrame', name = tostring(name or ''), ftype = tostring(ftype or ''), parent = tostring((parent and parent._name) or '') }
     Flux._host_calls[#Flux._host_calls + 1] = entry
     print('FLUX-DBG: CreateFrame ' .. tostring(name or '') .. ' type=' .. tostring(ftype or ''))
@@ -499,7 +533,15 @@ function CreateFrame(ftype, name, parent)
     relPoint = relPoint or ''
     x = x or 0
     y = y or 0
-    table.insert(self._points, { point=point, relativeTo = tostring(relativeTo), relPoint=relPoint, x = x, y = y })
+    -- Keep the relativeTo value as-is (may be a frame table). Do NOT convert to string;
+    -- serializer will extract _name from a table when possible. Instrument at runtime
+    -- so we can detect code paths that pass stringified tables.
+    pcall(function()
+      local rtType = type(relativeTo)
+      local rtStr = tostring(relativeTo)
+      print('FLUX-DBG: SetPoint called frame=' .. tostring(self._name or '') .. ' point=' .. tostring(point) .. ' relType=' .. rtType .. ' relTo=' .. rtStr)
+    end)
+    table.insert(self._points, { point=point, relativeTo = relativeTo, relPoint=relPoint, x = x, y = y })
   end
   function frame:SetSize(w,h)
     self.width = w
@@ -535,7 +577,7 @@ function CreateFrame(ftype, name, parent)
     return fs
   end
   function frame:CreateTexture(name, layer)
-    local tex = { _type = 'Texture', _name = tostring(name or 'tex_' .. tostring(math.random(1000,9999))), texturePath = '', parent = self, layer = layer }
+    local tex = { _type = 'Texture', _name = tostring(name or 'tex_' .. tostring(math.random(1000,9999))), texturePath = '', parent = self, layer = layer, _points = {} }
     -- tex coords defaults
     tex.texcoords = { 0, 1, 0, 1 }
     function tex:SetTexture(path)
@@ -553,7 +595,21 @@ function CreateFrame(ftype, name, parent)
       self.width = w
       self.height = h
     end
-    function tex:SetPoint(...) table.insert(self.parent._points, { point = tostring((select(1, ...)) or '' ) }) end
+    function tex:SetPoint(point, relativeTo, relPoint, x, y)
+      -- support optional args
+      point = point or ''
+      -- Keep relativeTo as-is (it's a frame table, don't convert to string yet)
+      relativeTo = relativeTo or ''
+      relPoint = relPoint or ''
+      x = x or 0
+      y = y or 0
+      pcall(function()
+        local rtType = type(relativeTo)
+        local rtStr = tostring(relativeTo)
+        print('FLUX-DBG: Texture:SetPoint parent=' .. tostring(self.parent and self.parent._name or '') .. ' point=' .. tostring(point) .. ' relType=' .. rtType .. ' relTo=' .. rtStr)
+      end)
+      table.insert(self._points, { point=point, relativeTo=relativeTo, relPoint=relPoint, x=x, y=y })
+    end
     -- attach to parent so serializer sees it
     self._textures = self._textures or {}
     table.insert(self._textures, tex)

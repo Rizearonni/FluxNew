@@ -35,7 +35,7 @@
       </Border>
 
       <Border Grid.Column="1" Background="{StaticResource BackgroundBrush}" Padding="8">
-        <Canvas Name="EmuCanvas" Background="{StaticResource BackgroundBrush}" />
+        <Canvas Name="EmuCanvas" Background="{StaticResource BackgroundBrush}" ClipToBounds="True" />
       </Border>
 
       <Border Grid.Column="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,0,0">
