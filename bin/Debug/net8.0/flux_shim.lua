@@ -473,9 +473,29 @@ end
   -- Minimal LibDBIcon stub
   do
     local ldbi = {}
-    function ldbi:Show(name) end
-    function ldbi:Hide(name) end
-    function ldbi:Register(name, broker, db) end
+    function ldbi:Show(name)
+      pcall(function()
+        Flux._minimap_buttons = Flux._minimap_buttons or {}
+        if Flux._minimap_buttons[name] then Flux._minimap_buttons[name].visible = true end
+        table.insert(Flux._host_calls, 'LibDBIconShow|' .. tostring(name))
+      end)
+    end
+    function ldbi:Hide(name)
+      pcall(function()
+        Flux._minimap_buttons = Flux._minimap_buttons or {}
+        if Flux._minimap_buttons[name] then Flux._minimap_buttons[name].visible = false end
+        table.insert(Flux._host_calls, 'LibDBIconHide|' .. tostring(name))
+      end)
+    end
+    function ldbi:Register(name, broker, db)
+      pcall(function()
+        Flux._minimap_buttons = Flux._minimap_buttons or {}
+        -- store the broker table for host-side invocation; keep ref to broker and db
+        Flux._minimap_buttons[name] = { broker = broker, db = db, visible = true }
+        -- notify the host to create a visual button for this registration
+        table.insert(Flux._host_calls, 'LibDBIconRegister|' .. tostring(name))
+      end)
+    end
     LibStub._libs['LibDBIcon-1.0'] = ldbi
   end
 

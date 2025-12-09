@@ -145,6 +145,30 @@ class Program
             return;
         }
 
+        // If launched with --test-blp <path> then attempt to decode the file via TextureCache
+        if (args != null && args.Length >= 2 && string.Equals(args[0], "--test-blp", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                var testPath = args[1];
+                Console.WriteLine($"Testing texture decode for: {testPath}");
+                var td = FluxNew.TextureCache.LoadTexture(testPath);
+                if (td == null)
+                {
+                    Console.WriteLine("TextureCache: returned null (failed to load or unsupported)");
+                }
+                else
+                {
+                    Console.WriteLine($"TextureCache: success -> {td.Width}x{td.Height}, bytes={td.Rgba?.Length}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error running --test-blp: {ex.Message}");
+            }
+            return;
+        }
+
         // Defer Lua and WoW API initialization until after Avalonia platform
         // services are available (MainWindow will initialize Lua).
         BuildAvaloniaApp()

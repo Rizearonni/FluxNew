@@ -38,7 +38,7 @@ namespace FluxNew
         /// <summary>
         /// Load frames from debug_frames.json and render textures onto a Canvas (preserves existing content)
         /// </summary>
-        public static void RenderFramesToCanvas(Canvas canvas, string? addonDirectory = null)
+        public static void RenderFramesToCanvas(Canvas canvas, string? addonDirectory = null, string? framesJson = null)
         {
             // DON'T clear the canvas - we want to add textures on top of existing frames
             // Remove any previously rendered elements produced by this renderer (only those tagged by us)
@@ -50,34 +50,39 @@ namespace FluxNew
                 canvas.Children.Remove(child);
             }
 
-            // Try multiple locations for debug_frames.json
-            var jsonPath = Path.Combine(AppContext.BaseDirectory ?? Environment.CurrentDirectory, "debug_frames.json");
-            if (!File.Exists(jsonPath))
-            {
-                // Try project root (parent of bin/Debug/net8.0)
-                var projectRoot = Path.Combine(AppContext.BaseDirectory ?? Environment.CurrentDirectory, "..", "..", "..");
-                jsonPath = Path.Combine(projectRoot, "debug_frames.json");
-                if (!File.Exists(jsonPath))
-                {
-                    // Try current directory
-                    jsonPath = Path.Combine(Environment.CurrentDirectory, "debug_frames.json");
-                    if (!File.Exists(jsonPath))
-                    {
-                        Console.WriteLine($"FrameRenderer: debug_frames.json not found (searched BaseDirectory, ProjectRoot, and CurrentDirectory)");
-                        return;
-                    }
-                }
-            }
-            
-            Console.WriteLine($"FrameRenderer: Loading frames from {jsonPath}");
-
+            List<FrameData>? frames = null;
             try
             {
-                var json = File.ReadAllText(jsonPath);
-                var frames = JsonSerializer.Deserialize<List<FrameData>>(json, new JsonSerializerOptions 
-                { 
-                    PropertyNameCaseInsensitive = true 
-                });
+                if (!string.IsNullOrWhiteSpace(framesJson))
+                {
+                    Console.WriteLine("FrameRenderer: Using frames JSON provided by caller");
+                    frames = JsonSerializer.Deserialize<List<FrameData>>(framesJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                }
+                else
+                {
+                    // Try multiple locations for debug_frames.json
+                    var jsonPath = Path.Combine(AppContext.BaseDirectory ?? Environment.CurrentDirectory, "debug_frames.json");
+                    if (!File.Exists(jsonPath))
+                    {
+                        // Try project root (parent of bin/Debug/net8.0)
+                        var projectRoot = Path.Combine(AppContext.BaseDirectory ?? Environment.CurrentDirectory, "..", "..", "..");
+                        jsonPath = Path.Combine(projectRoot, "debug_frames.json");
+                        if (!File.Exists(jsonPath))
+                        {
+                            // Try current directory
+                            jsonPath = Path.Combine(Environment.CurrentDirectory, "debug_frames.json");
+                            if (!File.Exists(jsonPath))
+                            {
+                                Console.WriteLine($"FrameRenderer: debug_frames.json not found (searched BaseDirectory, ProjectRoot, and CurrentDirectory)");
+                                return;
+                            }
+                        }
+                    }
+
+                    Console.WriteLine($"FrameRenderer: Loading frames from {jsonPath}");
+                    var json = File.ReadAllText(jsonPath);
+                    frames = JsonSerializer.Deserialize<List<FrameData>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                }
 
                 if (frames == null || frames.Count == 0)
                 {
@@ -86,6 +91,10 @@ namespace FluxNew
                 }
 
                 Console.WriteLine($"FrameRenderer: Loaded {frames.Count} frames from JSON");
+                // Diagnostic: report a summary of types present
+                var typeCounts = frames.GroupBy(f => string.IsNullOrEmpty(f.type) ? "(unknown)" : f.type)
+                    .ToDictionary(g => g.Key, g => g.Count());
+                Console.WriteLine($"FrameRenderer: Type summary: {string.Join(", ", typeCounts.Select(kv => kv.Key+":"+kv.Value))}");
 
                 // Build name -> frame map for quick lookups
                 var frameByName = frames.Where(f => !string.IsNullOrEmpty(f.name)).ToDictionary(f => f.name, f => f);
@@ -559,37 +568,54 @@ namespace FluxNew
                         return true;
                     }
 
+                    // Developer mode: force placeholders for every frame even if textures missing
+                    const bool FORCE_PLACEHOLDERS = true;
+
                     // Render regular frames as placeholders (simple borders)
                     foreach (var frame in regularFrames)
                     {
                         // Render regardless of reported 'shown' state so we can debug layout
-                        if (frame.w <= 0 || frame.h <= 0) continue;
+                        // If sizes are missing but FORCE_PLACEHOLDERS is set, supply sensible defaults
+                        var fw = frame.w > 0 ? frame.w : (FORCE_PLACEHOLDERS ? 160 : frame.w);
+                        var fh = frame.h > 0 ? frame.h : (FORCE_PLACEHOLDERS ? 24 : frame.h);
 
                         var left = frame.x + transX;
                         var top = frame.y + transY;
 
-                        // Skip frames that lie fully outside the emulator canvas —
-                        // addon code should not be able to create UI outside the emulation region.
-                        if (!IntersectsCanvas(left, top, frame.w, frame.h))
+                        // Skip frames that lie fully outside the emulator canvas
+                        if (!IntersectsCanvas(left, top, fw, fh))
                         {
-                            // Optionally log a debug line for skip events
-                            // Console.WriteLine($"FrameRenderer: Skipping off-canvas frame '{frame.name}' at ({left},{top}) size ({frame.w}x{frame.h})");
+                            // Console.WriteLine($"FrameRenderer: Skipping off-canvas frame '{frame.name}' at ({left},{top}) size ({fw}x{fh})");
                             continue;
                         }
 
                         var border = new Border
                         {
-                            Width = frame.w,
-                            Height = frame.h,
+                            Width = fw,
+                            Height = fh,
                             BorderBrush = Brushes.Gray,
                             BorderThickness = new Thickness(1),
-                            Background = new SolidColorBrush(Color.FromArgb(30, 100, 100, 100)),
+                            Background = new SolidColorBrush(Color.FromArgb(40, 50, 50, 80)),
                             Tag = $"FrameRenderer:{frame.name}"
                         };
 
-                        Canvas.SetLeft(border, left);
-                        Canvas.SetTop(border, top);
-                        canvas.Children.Add(border);
+                        // Add a label with the frame name for easier debugging
+                        if (!string.IsNullOrEmpty(frame.name))
+                        {
+                            var lbl = new TextBlock { Text = frame.name, Foreground = Brushes.White, FontSize = 11, Margin = new Thickness(4, 2) };
+                            var grid = new Grid();
+                            grid.Width = fw; grid.Height = fh; grid.Children.Add(border); grid.Children.Add(lbl);
+                            Canvas.SetLeft(grid, left);
+                            Canvas.SetTop(grid, top);
+                            grid.Tag = $"FrameRenderer:{frame.name}";
+                            canvas.Children.Add(grid);
+                        }
+                        else
+                        {
+                            Canvas.SetLeft(border, left);
+                            Canvas.SetTop(border, top);
+                            canvas.Children.Add(border);
+                        }
                     }
 
                     // Render fontstrings as TextBlocks
@@ -629,37 +655,92 @@ namespace FluxNew
                     // Render textures
                     foreach (var tex in textures)
                     {
+                        Console.WriteLine($"FrameRenderer: Texture candidate '{tex.name}' path='{tex.texturePath}' size=({tex.w}x{tex.h}) anchors={(tex.anchors?.Count ?? 0)} parent='{tex.parent}'");
                         if (string.IsNullOrWhiteSpace(tex.texturePath)) continue;
 
                         var resolvedPath = AssetPathResolver.Resolve(tex.texturePath, addonDirectory);
                         if (resolvedPath == null)
                         {
-                            Console.WriteLine($"FrameRenderer: Could not resolve texture path '{tex.texturePath}'");
-                            continue;
+                            Console.WriteLine($"FrameRenderer: Could not resolve texture path '{tex.texturePath}' (addonDir='{addonDirectory}')");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"FrameRenderer: Resolved texture '{tex.texturePath}' -> '{resolvedPath}'");
                         }
 
-                        var textureData = TextureCache.LoadTexture(resolvedPath);
-                        if (textureData == null)
+                        TextureData? textureData = null;
+                        if (resolvedPath != null)
                         {
-                            Console.WriteLine($"FrameRenderer: Failed to load texture from '{resolvedPath}'");
-                            continue;
+                            textureData = TextureCache.LoadTexture(resolvedPath);
+                            if (textureData == null)
+                                Console.WriteLine($"FrameRenderer: Failed to load texture from '{resolvedPath}' (see TextureCache errors)");
                         }
 
-                        var bitmap = CreateBitmapFromRgba(textureData);
-                        if (bitmap == null) continue;
+                        WriteableBitmap? bitmap = null;
+                        if (textureData != null) bitmap = CreateBitmapFromRgba(textureData);
 
-                        var image = new Image
-                        {
-                            Source = bitmap,
-                            Width = tex.w > 0 ? tex.w : textureData.Width,
-                            Height = tex.h > 0 ? tex.h : textureData.Height,
-                            Tag = $"FrameRenderer:{tex.name}"
-                        };
+                        double imgW = tex.w > 0 ? tex.w : (textureData != null ? textureData.Width : 48);
+                        double imgH = tex.h > 0 ? tex.h : (textureData != null ? textureData.Height : 48);
 
-                        // Calculate position from anchors if available
+                        // initial position values (may be overridden by anchors)
                         double posX = tex.x;
                         double posY = tex.y;
-                        
+
+                        Image? image = null;
+                        if (bitmap != null)
+                        {
+                            image = new Image
+                            {
+                                Source = bitmap,
+                                Width = imgW,
+                                Height = imgH,
+                                Tag = $"FrameRenderer:{tex.name}"
+                            };
+                        }
+                        else if (FORCE_PLACEHOLDERS)
+                        {
+                            // Create a placeholder grid with a colored rectangle and the texture name
+                            var phBorder = new Border
+                            {
+                                Width = imgW,
+                                Height = imgH,
+                                Background = new SolidColorBrush(Color.FromArgb(120, 160, 40, 40)),
+                                BorderBrush = Brushes.DarkRed,
+                                BorderThickness = new Thickness(1)
+                            };
+                            var phText = new TextBlock { Text = tex.texturePath ?? tex.name ?? "(texture)", Foreground = Brushes.White, FontSize = 10, Margin = new Thickness(2) };
+                            var phGrid = new Grid(); phGrid.Width = imgW; phGrid.Height = imgH; phGrid.Children.Add(phBorder); phGrid.Children.Add(phText); phGrid.Tag = $"FrameRenderer:ph:{tex.name}";
+                            // Position and add
+                            posX = tex.x + transX;
+                            posY = tex.y + transY;
+                            if (tex.anchors != null && tex.anchors.Count > 0)
+                            {
+                                var anchor = NormalizeAnchor(tex.anchors[0]);
+                                if (anchor != null)
+                                {
+                                    anchor.TryGetValue("x", out var xval);
+                                    anchor.TryGetValue("y", out var yval);
+                                    double.TryParse(xval ?? "0", out var offx);
+                                    double.TryParse(yval ?? "0", out var offy);
+                                    posX = (tex.parent != null ? (framesSnapshot.FirstOrDefault(f => f.name == tex.parent)?.x ?? 0) : 0) + offx + transX;
+                                    posY = (tex.parent != null ? (framesSnapshot.FirstOrDefault(f => f.name == tex.parent)?.y ?? 0) : 0) + offy + transY;
+                                }
+                            }
+                            if (IntersectsCanvas(posX, posY, imgW, imgH))
+                            {
+                                Canvas.SetLeft(phGrid, posX);
+                                Canvas.SetTop(phGrid, posY);
+                                canvas.Children.Add(phGrid);
+                                Console.WriteLine($"FrameRenderer: Drew placeholder for texture '{tex.texturePath}' at ({posX},{posY}) size ({imgW}x{imgH})");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"FrameRenderer: Skipped placeholder for off-canvas texture '{tex.texturePath}' at ({posX},{posY}) size ({imgW}x{imgH})");
+                            }
+                            continue;
+                        }
+
+                        // Calculate position from anchors if available
                         if (tex.anchors != null && tex.anchors.Count > 0)
                         {
                             var anchor = tex.anchors[0]; // Use first anchor

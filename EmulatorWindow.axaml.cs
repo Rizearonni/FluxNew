@@ -11,6 +11,8 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Avalonia.Threading;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Formats.Png;
 
 namespace FluxNew
 {
@@ -19,6 +21,8 @@ namespace FluxNew
         // cached textures root (optional). If a folder named "textures" exists under the app base dir,
         // we'll search it for game-like assets (provided by user/repo).
         private string? _texturesRoot;
+        // Path of the last addon folder that was loaded into the emulator; used to resolve textures
+        private string? _lastLoadedAddonPath;
 
         private Canvas? _canvas;
         private ListBox? _addonList;
@@ -64,6 +68,8 @@ namespace FluxNew
         private readonly System.Collections.Generic.Dictionary<string, Canvas> _liveFrames = new System.Collections.Generic.Dictionary<string, Canvas>(StringComparer.OrdinalIgnoreCase);
         private readonly System.Collections.Generic.Dictionary<string, Control> _liveObjects = new System.Collections.Generic.Dictionary<string, Control>(StringComparer.OrdinalIgnoreCase);
         private readonly System.Collections.Generic.Dictionary<string, string> _registeredHandlers = new System.Collections.Generic.Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        // LDB auto-created minimap buttons registry
+        private readonly System.Collections.Generic.Dictionary<string, Control> _ldbButtons = new System.Collections.Generic.Dictionary<string, Control>(StringComparer.OrdinalIgnoreCase);
 
         private string? FindTextureForName(string name)
         {
@@ -104,6 +110,39 @@ namespace FluxNew
             }
             catch { }
             return null;
+        }
+
+        // Reposition all auto-created LDB buttons radially around the minimap host
+        private void RepositionLdbButtons(Canvas host)
+        {
+            try
+            {
+                if (host == null) return;
+                var btns = _ldbButtons.Values.ToList();
+                if (btns.Count == 0) return;
+                var hb = host.Bounds;
+                // if not measured yet, skip
+                if (hb.Width <= 0 || hb.Height <= 0) return;
+                var cx = hb.Width / 2.0;
+                var cy = hb.Height / 2.0;
+                var btnSize = btns[0].Bounds.Width > 0 ? btns[0].Bounds.Width : 28.0;
+                var radius = Math.Max(24, Math.Min(cx, cy) - btnSize - 4);
+                var step = 360.0 / btns.Count;
+                // start angle (degrees) - place at top-right-ish by default
+                var start = -45.0;
+                for (int i = 0; i < btns.Count; i++)
+                {
+                    var angle = (start + i * step) * Math.PI / 180.0;
+                    var dx = Math.Cos(angle) * radius;
+                    var dy = -Math.Sin(angle) * radius; // invert y
+                    var left = cx + dx - btnSize / 2.0;
+                    var top = cy + dy - btnSize / 2.0;
+                    var ctl = btns[i];
+                    Canvas.SetLeft(ctl, left);
+                    Canvas.SetTop(ctl, top);
+                }
+            }
+            catch { }
         }
 
         public EmulatorWindow()
@@ -168,7 +207,13 @@ namespace FluxNew
                                     var (ok, framesStr) = WoWApi.TryLoadAddonDirectory(full);
                                     if (ok && !string.IsNullOrWhiteSpace(framesStr))
                                     {
-                                        try { LoadFramesFromJson(framesStr, Path.GetFileName(full), full); }
+                                        try
+                                        {
+                                            _lastLoadedAddonPath = full;
+                                            LoadFramesFromJson(framesStr, Path.GetFileName(full), full);
+                                            // Dump runtime diagnostics after addon load to help debug slash/minimap registrations
+                                            try { var diag = WoWApi.DumpRuntimeDiagnostics(); if (!string.IsNullOrWhiteSpace(diag)) AppendToEmuConsole("Runtime diagnostics:\n" + diag); } catch { }
+                                        }
                                         catch (Exception ex) { AppendToEmuConsole("Failed to load frames into emulator: " + ex.Message); }
                                     }
                                     else
@@ -202,7 +247,158 @@ namespace FluxNew
                                 AppendToEmuConsole($"TryLoadAddonDirectory: success={ok}, framesLen={(frames?.Length ?? 0)}");
                                 if (ok && !string.IsNullOrWhiteSpace(frames))
                                 {
-                                    try { LoadFramesFromJson(frames, Path.GetFileName(folder), folder); AppendToEmuConsole("Emulator loaded frames from folder."); }
+                                    try
+                                    {
+                                        _lastLoadedAddonPath = folder;
+                                            LoadFramesFromJson(frames, Path.GetFileName(folder), folder);
+                                        AppendToEmuConsole("Emulator loaded frames from folder.");
+                                        // Dump runtime diagnostics after addon load to help debug slash/minimap registrations
+                                        try { var diag = WoWApi.DumpRuntimeDiagnostics(); if (!string.IsNullOrWhiteSpace(diag)) AppendToEmuConsole("Runtime diagnostics:\n" + diag); } catch { }
+                                        // Scan LibDataBroker objects and auto-create minimap buttons for brokers that look actionable
+                                        try
+                                        {
+                                            var ldb = WoWApi.ScanLibDataBroker();
+                                            if (!string.IsNullOrWhiteSpace(ldb))
+                                            {
+                                                AppendToEmuConsole("LibDataBroker objects:\n" + ldb);
+                                                var lines = ldb.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                                                foreach (var ln in lines)
+                                                {
+                                                    try
+                                                    {
+                                                        var parts = ln.Split(new[] { '|' }, 5);
+                                                        if (parts.Length < 5) continue;
+                                                        // parts: LDB|name|type|hasOnClick|icon
+                                                        var name = parts[1];
+                                                        var type = parts[2];
+                                                        var hasOnClick = parts[3] == "1";
+                                                        var icon = parts[4];
+                                                        // If broker has OnClick or is type 'launcher', create a minimap button
+                                                        if (hasOnClick || (!string.IsNullOrWhiteSpace(type) && type == "launcher") )
+                                                        {
+                                                            // only create if not already created via LibDBIcon
+                                                            try
+                                                            {
+                                                                var mapHolder = _canvas?.Children.OfType<Canvas>().FirstOrDefault(c => string.Equals(c.Name, "mod_map_holder", StringComparison.OrdinalIgnoreCase));
+                                                                if (mapHolder == null) continue;
+                                                                var innerBorder = mapHolder.Children.OfType<Border>().FirstOrDefault();
+                                                                Grid? grid = innerBorder?.Child as Grid;
+                                                                var content = grid?.Children.OfType<Grid>().FirstOrDefault(x => x.Name == "ContentArea");
+                                                                if (content == null) continue;
+                                                                var host = content.Children.OfType<Canvas>().FirstOrDefault(c => c.Name == "MinimapButtonsHost");
+                                                                if (host == null)
+                                                                {
+                                                                    host = new Canvas { Name = "MinimapButtonsHost", IsHitTestVisible = true };
+                                                                    content.Children.Add(host);
+                                                                }
+
+                                                                double btnSize = 28;
+                                                                Control createdCtl = null;
+                                                                Bitmap? bmp = null;
+                                                                if (!string.IsNullOrWhiteSpace(icon) && icon != "(func)")
+                                                                {
+                                                                    try { var td = TextureCache.LoadTexture(icon); if (td != null) bmp = BitmapFromTextureData(td); } catch { }
+                                                                }
+                                                                if (bmp != null)
+                                                                {
+                                                                    // create a rounded border background and put the image inside for nicer visuals
+                                                                    var border = new Border
+                                                                    {
+                                                                        Width = btnSize,
+                                                                        Height = btnSize,
+                                                                        CornerRadius = new CornerRadius(btnSize / 2.0),
+                                                                        Background = new SolidColorBrush(Color.FromArgb(200, 0, 0, 0)),
+                                                                        BorderBrush = Brushes.Gray,
+                                                                        BorderThickness = new Thickness(1),
+                                                                        Padding = new Thickness(3),
+                                                                        Child = new Image { Source = bmp, Stretch = Avalonia.Media.Stretch.Uniform }
+                                                                    };
+                                                                    createdCtl = border;
+                                                                    // Tooltip with broker name
+                                                                    try { Avalonia.Controls.ToolTip.SetTip(border, name); } catch { }
+                                                                    // hover/visual changes handled via tooltip; keep visuals simple for compatibility
+                                                                    // click invokes broker OnClick via pointer press on the wrapper
+                                                                    border.PointerPressed += (_, __) =>
+                                                                    {
+                                                                        Task.Run(() =>
+                                                                        {
+                                                                            try
+                                                                            {
+                                                                                var safe = name.Replace("'", "\\'").Replace("\\", "\\\\");
+                                                                                KopiLuaRunner.TryRun($"if LibStub and LibStub._libs and LibStub._libs['LibDataBroker-1.1'] and LibStub._libs['LibDataBroker-1.1'].objects['{safe}'] and type(LibStub._libs['LibDataBroker-1.1'].objects['{safe}'].OnClick)=='function' then LibStub._libs['LibDataBroker-1.1'].objects['{safe}'].OnClick('LeftButton') end");
+                                                                                Dispatcher.UIThread.Post(() => AppendToEmuConsole($"LDB broker '{name}' clicked and attempted OnClick invocation."), Avalonia.Threading.DispatcherPriority.Background);
+                                                                            }
+                                                                            catch (Exception ex) { Dispatcher.UIThread.Post(() => AppendToEmuConsole("LDB click invoke failed: " + ex.Message)); }
+                                                                        });
+                                                                    };
+                                                                }
+                                                                else
+                                                                {
+                                                                    // fallback rounded text button
+                                                                    var border = new Border
+                                                                    {
+                                                                        Width = btnSize,
+                                                                        Height = btnSize,
+                                                                        CornerRadius = new CornerRadius(btnSize / 2.0),
+                                                                        Background = new SolidColorBrush(Color.FromArgb(200, 0, 0, 0)),
+                                                                        BorderBrush = Brushes.Gray,
+                                                                        BorderThickness = new Thickness(1),
+                                                                        Child = new TextBlock { Text = name, Foreground = Brushes.White, TextAlignment = TextAlignment.Center, VerticalAlignment = VerticalAlignment.Center, FontSize = 10, TextWrapping = TextWrapping.Wrap }
+                                                                    };
+                                                                    createdCtl = border;
+                                                                    try { Avalonia.Controls.ToolTip.SetTip(border, name); } catch { }
+                                                                    // hover effects not available in this Avalonia version; tooltip present
+                                                                    border.PointerPressed += (_, __) =>
+                                                                    {
+                                                                        Task.Run(() =>
+                                                                        {
+                                                                            try
+                                                                            {
+                                                                                var safe = name.Replace("'", "\\'").Replace("\\", "\\\\");
+                                                                                KopiLuaRunner.TryRun($"if LibStub and LibStub._libs and LibStub._libs['LibDataBroker-1.1'] and LibStub._libs['LibDataBroker-1.1'].objects['{safe}'] and type(LibStub._libs['LibDataBroker-1.1'].objects['{safe}'].OnClick)=='function' then LibStub._libs['LibDataBroker-1.1'].objects['{safe}'].OnClick('LeftButton') end");
+                                                                                Dispatcher.UIThread.Post(() => AppendToEmuConsole($"LDB broker '{name}' clicked and attempted OnClick invocation."), Avalonia.Threading.DispatcherPriority.Background);
+                                                                            }
+                                                                            catch (Exception ex) { Dispatcher.UIThread.Post(() => AppendToEmuConsole("LDB click invoke failed: " + ex.Message)); }
+                                                                        });
+                                                                    };
+                                                                }
+
+                                                                // avoid duplicates
+                                                                if (_ldbButtons.ContainsKey(name))
+                                                                {
+                                                                    var existing = _ldbButtons[name];
+                                                                    existing.IsVisible = true;
+                                                                }
+                                                                else
+                                                                {
+                                                                    host.Children.Add(createdCtl);
+                                                                    _ldbButtons[name] = createdCtl;
+                                                                    // reposition buttons radially when layout is available
+                                                                    void RepositionHandler(object? s, VisualTreeAttachmentEventArgs a)
+                                                                    {
+                                                                        try { RepositionLdbButtons(host); }
+                                                                        catch { }
+                                                                    }
+                                                                    createdCtl.AttachedToVisualTree += RepositionHandler;
+                                                                }
+                                                            }
+                                                            catch { }
+                                                        }
+                                                    }
+                                                    catch { }
+                                                }
+                                            }
+                                        }
+                                        catch { }
+
+                                        // Attempt to auto-invoke common addon UI openers (e.g., Attune_Show, Attune_Frame.Show)
+                                        try
+                                        {
+                                            var resOpen = WoWApi.InvokeAddonUiOpeners(Path.GetFileName(folder));
+                                            if (!string.IsNullOrWhiteSpace(resOpen)) AppendToEmuConsole("Auto-open attempt:\n" + resOpen);
+                                        }
+                                        catch { }
+                                    }
                                     catch (Exception ex) { AppendToEmuConsole($"Error loading frames into emulator: {ex.Message}"); }
                                 }
                             }
@@ -504,6 +700,156 @@ namespace FluxNew
                                     }
                                     catch { }
                                 }
+                                else if (string.Equals(cmd, "LibDBIconRegister", System.StringComparison.OrdinalIgnoreCase) && parts.Length >= 2)
+                                {
+                                    var iconName = parts[1];
+                                    try
+                                    {
+                                        // Attempt to attach a button to the Minimap module if present
+                                        var mapHolder = _canvas?.Children.OfType<Canvas>().FirstOrDefault(c => string.Equals(c.Name, "mod_map_holder", StringComparison.OrdinalIgnoreCase));
+                                        if (mapHolder != null)
+                                        {
+                                            var innerBorder = mapHolder.Children.OfType<Border>().FirstOrDefault();
+                                            Grid? grid = innerBorder?.Child as Grid;
+                                            var content = grid?.Children.OfType<Grid>().FirstOrDefault(x => x.Name == "ContentArea");
+                                            if (content != null)
+                                            {
+                                                // ensure a host canvas for minimap buttons exists
+                                                var host = content.Children.OfType<Canvas>().FirstOrDefault(c => c.Name == "MinimapButtonsHost");
+                                                if (host == null)
+                                                {
+                                                    host = new Canvas { Name = "MinimapButtonsHost", IsHitTestVisible = true };
+                                                    content.Children.Add(host);
+                                                }
+
+                                                double btnSize = 28;
+                                                // query Lua for broker icon and stored minimapPos
+                                                var (iconPath, posStr) = QueryMinimapBrokerInfo(iconName);
+                                                Control createdCtl = null;
+                                                Bitmap? bmp = null;
+                                                if (!string.IsNullOrWhiteSpace(iconPath))
+                                                {
+                                                    try
+                                                    {
+                                                        // Try to load via TextureCache (handles BLP and common paths)
+                                                        var td = TextureCache.LoadTexture(iconPath);
+                                                        if (td != null) bmp = BitmapFromTextureData(td);
+                                                    }
+                                                    catch { }
+                                                }
+
+                                                if (bmp != null)
+                                                {
+                                                    var img = new Image { Source = bmp, Width = btnSize, Height = btnSize };
+                                                    var btn = new Button { Width = btnSize, Height = btnSize, Padding = new Thickness(0), Content = img };
+                                                    createdCtl = btn;
+                                                    // click invokes broker OnClick
+                                                    btn.Click += (_, __) =>
+                                                    {
+                                                        Task.Run(() =>
+                                                        {
+                                                            try
+                                                            {
+                                                                var safe = iconName.Replace("'", "\\'").Replace("\\", "\\\\");
+                                                                KopiLuaRunner.TryRun($"if Flux and Flux._minimap_buttons and Flux._minimap_buttons['{safe}'] and type(Flux._minimap_buttons['{safe}'].broker.OnClick)=='function' then Flux._minimap_buttons['{safe}'].broker.OnClick('LeftButton') end");
+                                                                Dispatcher.UIThread.Post(() => AppendToEmuConsole($"Minimap '{iconName}' clicked and invoked Lua broker."), Avalonia.Threading.DispatcherPriority.Background);
+                                                            }
+                                                            catch (Exception ex) { Dispatcher.UIThread.Post(() => AppendToEmuConsole("Minimap click invoke failed: " + ex.Message)); }
+                                                        });
+                                                    };
+                                                }
+                                                else
+                                                {
+                                                    // fallback to text button
+                                                    var btn = new Button { Content = iconName, Width = btnSize, Height = btnSize };
+                                                    createdCtl = btn;
+                                                    btn.Click += (_, __) =>
+                                                    {
+                                                        Task.Run(() =>
+                                                        {
+                                                            try
+                                                            {
+                                                                var safe = iconName.Replace("'", "\\'").Replace("\\", "\\\\");
+                                                                KopiLuaRunner.TryRun($"if Flux and Flux._minimap_buttons and Flux._minimap_buttons['{safe}'] and type(Flux._minimap_buttons['{safe}'].broker.OnClick)=='function' then Flux._minimap_buttons['{safe}'].broker.OnClick('LeftButton') end");
+                                                                Dispatcher.UIThread.Post(() => AppendToEmuConsole($"Minimap '{iconName}' clicked and invoked Lua broker."), Avalonia.Threading.DispatcherPriority.Background);
+                                                            }
+                                                            catch (Exception ex) { Dispatcher.UIThread.Post(() => AppendToEmuConsole("Minimap click invoke failed: " + ex.Message)); }
+                                                        });
+                                                    };
+                                                }
+
+                                                // add to host
+                                                int idx = host.Children.Count;
+                                                host.Children.Add(createdCtl);
+
+                                                // Position: if posStr contains an angle, place around minimap circle; otherwise arrange in a row
+                                                if (double.TryParse(posStr, out var angleDeg))
+                                                {
+                                                    // Defer actual layout until host has measured
+                                                    createdCtl.AttachedToVisualTree += (_, __) =>
+                                                    {
+                                                        try
+                                                        {
+                                                            var hb = host.Bounds;
+                                                            var cx = hb.Width / 2.0;
+                                                            var cy = hb.Height / 2.0;
+                                                            var radius = Math.Max(10, Math.Min(hb.Width, hb.Height) / 2.0 - btnSize - 4);
+                                                            var rad = angleDeg * Math.PI / 180.0;
+                                                            var dx = Math.Cos(rad) * radius;
+                                                            var dy = -Math.Sin(rad) * radius; // invert Y to match screen coord
+                                                            var lx = cx + dx - btnSize / 2.0;
+                                                            var ty = cy + dy - btnSize / 2.0;
+                                                            Canvas.SetLeft(createdCtl, lx);
+                                                            Canvas.SetTop(createdCtl, ty);
+                                                        }
+                                                        catch { }
+                                                    };
+                                                }
+                                                else
+                                                {
+                                                    // row layout default
+                                                    Canvas.SetLeft(createdCtl, 6 + idx * (btnSize + 6));
+                                                    Canvas.SetTop(createdCtl, 6);
+                                                }
+
+                                                // record for later show/hide
+                                                _liveObjects[iconName] = createdCtl;
+
+                                                AppendToEmuConsole($"Registered minimap icon '{iconName}' (icon={iconPath}, pos={posStr})");
+                                                continue;
+                                            }
+                                        }
+
+                                        // fallback: create a top-level toolbar button if minimap module missing
+                                        var fallbackBtn = new Button { Content = iconName, Width = 80, Height = 24 };
+                                        _canvas?.Children.Add(fallbackBtn);
+                                        var fx = 10 + _liveObjects.Count % 6 * 86;
+                                        var fy = 10 + (_liveObjects.Count / 6) * 34;
+                                        Canvas.SetLeft(fallbackBtn, fx);
+                                        Canvas.SetTop(fallbackBtn, fy);
+                                        _liveObjects[iconName] = fallbackBtn;
+                                        AppendToEmuConsole($"Registered minimap icon (fallback) '{iconName}'");
+                                    }
+                                    catch { }
+                                }
+                                else if (string.Equals(cmd, "LibDBIconShow", System.StringComparison.OrdinalIgnoreCase) && parts.Length >= 2)
+                                {
+                                    var iconName = parts[1];
+                                    try
+                                    {
+                                        if (_liveObjects.TryGetValue(iconName, out var ctl)) ctl.IsVisible = true;
+                                    }
+                                    catch { }
+                                }
+                                else if (string.Equals(cmd, "LibDBIconHide", System.StringComparison.OrdinalIgnoreCase) && parts.Length >= 2)
+                                {
+                                    var iconName = parts[1];
+                                    try
+                                    {
+                                        if (_liveObjects.TryGetValue(iconName, out var ctl)) ctl.IsVisible = false;
+                                    }
+                                    catch { }
+                                }
                                 else if ((string.Equals(cmd, "ShowFrame", System.StringComparison.OrdinalIgnoreCase) || string.Equals(cmd, "ShowObject", System.StringComparison.OrdinalIgnoreCase)) && parts.Length >= 2)
                                 {
                                     var obj = parts[1];
@@ -581,7 +927,20 @@ namespace FluxNew
                         if (_canvas != null)
                         {
                             AppendToEmuConsole("Rendering frames from debug_frames.json...");
-                            FrameRenderer.RenderFramesToCanvas(_canvas);
+                            // If we have a known last-loaded addon, request its snapshot from the shim
+                            string? framesJson = null;
+                            if (!string.IsNullOrWhiteSpace(_lastLoadedAddonPath))
+                            {
+                                try
+                                {
+                                    var (ok, framesStr) = WoWApi.TryLoadAddonDirectory(_lastLoadedAddonPath);
+                                    if (ok && !string.IsNullOrWhiteSpace(framesStr)) framesJson = framesStr;
+                                }
+                                catch { }
+                            }
+
+                            // Pass framesJson when available so textures and runtime anchors resolve relative to the addon
+                            FrameRenderer.RenderFramesToCanvas(_canvas, _lastLoadedAddonPath, framesJson);
                             AppendToEmuConsole("Frame rendering complete");
                         }
                         else
@@ -987,11 +1346,74 @@ namespace FluxNew
                         }
 
                         // chat messages list
-                        var list = new ListBox { Background = Brushes.Transparent, Foreground = Brushes.White, Margin = new Thickness(6,34,6,6) };
+                        var list = new ListBox { Background = Brushes.Transparent, Foreground = Brushes.White, Margin = new Thickness(6,34,6,36) };
                         if (list.Items is System.Collections.IList il) { il.Add("[20:01] Welcome to the emulator chat."); il.Add("[20:02] Player1: Hello."); il.Add("[20:03] Player2: Hi!"); }
+
+                        // input box for typing messages / slash commands
+                        var inputBox = new TextBox { Width = 320, Height = 24, Margin = new Thickness(6, 0, 6, 6), Watermark = "Type message or /command and press Enter" };
+                        inputBox.KeyDown += (s2, e2) =>
+                        {
+                            try
+                            {
+                                if (e2.Key == Avalonia.Input.Key.Enter)
+                                {
+                                    var txt = inputBox.Text ?? string.Empty;
+                                    if (string.IsNullOrWhiteSpace(txt)) return;
+                                    // If starts with '/', treat as slash command and forward to Lua
+                                    if (txt.StartsWith("/"))
+                                    {
+                                        // Intercept local diagnostic command first
+                                        if (txt.StartsWith("/fluxdiag", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            Task.Run(() =>
+                                            {
+                                                try
+                                                {
+                                                    var diag = WoWApi.DumpRuntimeDiagnostics();
+                                                    Dispatcher.UIThread.Post(() =>
+                                                    {
+                                                        AppendToEmuConsole($"Runtime diagnostics (on-demand):\n{diag}");
+                                                    }, Avalonia.Threading.DispatcherPriority.Background);
+                                                }
+                                                catch (Exception ex) { Dispatcher.UIThread.Post(() => AppendToEmuConsole("fluxdiag failed: " + ex.Message)); }
+                                            });
+                                        }
+                                        else
+                                        {
+                                            Task.Run(() =>
+                                            {
+                                                try
+                                                {
+                                                    var ok = WoWApi.ExecuteSlashCommand(txt);
+                                                    Dispatcher.UIThread.Post(() =>
+                                                    {
+                                                        AppendToEmuConsole($"Slash command '{txt}' executed -> {ok}");
+                                                    }, Avalonia.Threading.DispatcherPriority.Background);
+                                                }
+                                                catch (Exception ex) { Dispatcher.UIThread.Post(() => AppendToEmuConsole("Slash cmd failed: " + ex.Message)); }
+                                            });
+                                        }
+                                    }
+                                    else
+                                    {
+                                        // Normal chat message: add to list visually
+                                        try
+                                        {
+                                            if (list.Items is System.Collections.IList li) li.Add("[me] " + txt);
+                                        }
+                                        catch { }
+                                    }
+                                    inputBox.Text = string.Empty;
+                                    e2.Handled = true;
+                                }
+                            }
+                            catch { }
+                        };
 
                         content.Children.Add(tabs);
                         content.Children.Add(list);
+                        // place input after the list (lower margin of list reserved)
+                        content.Children.Add(inputBox);
                     }
                 }
                 _canvas.Children.Add(frame);
@@ -1356,6 +1778,57 @@ namespace FluxNew
                 _canvas.Children.Add(frame);
             }
             catch { }
+        }
+
+        // Try to query the Lua VM for minimap broker icon path and stored minimapPos.
+        // Returns tuple (iconPath, posString) where either may be empty.
+        private (string icon, string pos) QueryMinimapBrokerInfo(string name)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(name)) return (string.Empty, string.Empty);
+                var safe = name.Replace("\\", "\\\\").Replace("\"", "\\\"");
+                var lua = $@"local out = ''
+local b = Flux and Flux._minimap_buttons and Flux._minimap_buttons['{safe}']
+if b then
+  local icon = ''
+  if b.broker then icon = b.broker.icon or b.broker.iconfile or b.broker.texture or b.broker.Texture or '' end
+  local pos = ''
+  if b.db and b.db.minimapPos then pos = tostring(b.db.minimapPos) end
+  out = icon .. '|' .. pos
+end
+return out";
+                var (ok, res) = KopiLuaRunner.TryRun(lua);
+                if (!ok || string.IsNullOrEmpty(res)) return (string.Empty, string.Empty);
+                var parts = res.Split(new[] { '|' }, 2);
+                var icon = parts.Length > 0 ? parts[0] : string.Empty;
+                var pos = parts.Length > 1 ? parts[1] : string.Empty;
+                return (icon ?? string.Empty, pos ?? string.Empty);
+            }
+            catch { return (string.Empty, string.Empty); }
+        }
+
+        // Convert a TextureData (RGBA bytes) into an Avalonia Bitmap via ImageSharp in-memory PNG.
+        private Bitmap? BitmapFromTextureData(TextureData? td)
+        {
+            try
+            {
+                if (td == null || td.Rgba == null || td.Rgba.Length == 0) return null;
+                int w = td.Width; int h = td.Height;
+                var pixels = new Rgba32[w * h];
+                var src = td.Rgba;
+                for (int i = 0, j = 0; i < pixels.Length; i++, j += 4)
+                {
+                    var r = src[j]; var g = src[j + 1]; var b = src[j + 2]; var a = src[j + 3];
+                    pixels[i] = new Rgba32(r, g, b, a);
+                }
+                using var img = SixLabors.ImageSharp.Image.LoadPixelData<Rgba32>(pixels, w, h);
+                using var ms = new MemoryStream();
+                img.Save(ms, new SixLabors.ImageSharp.Formats.Png.PngEncoder());
+                ms.Position = 0;
+                return new Bitmap(ms);
+            }
+            catch { return null; }
         }
 
         private void AddBagsModule()

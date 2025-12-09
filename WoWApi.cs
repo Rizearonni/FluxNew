@@ -502,9 +502,29 @@ end
   -- Minimal LibDBIcon stub
   do
     local ldbi = {}
-    function ldbi:Show(name) end
-    function ldbi:Hide(name) end
-    function ldbi:Register(name, broker, db) end
+    function ldbi:Show(name)
+      pcall(function()
+        Flux._minimap_buttons = Flux._minimap_buttons or {}
+        if Flux._minimap_buttons[name] then Flux._minimap_buttons[name].visible = true end
+        table.insert(Flux._host_calls, 'LibDBIconShow|' .. tostring(name))
+      end)
+    end
+    function ldbi:Hide(name)
+      pcall(function()
+        Flux._minimap_buttons = Flux._minimap_buttons or {}
+        if Flux._minimap_buttons[name] then Flux._minimap_buttons[name].visible = false end
+        table.insert(Flux._host_calls, 'LibDBIconHide|' .. tostring(name))
+      end)
+    end
+    function ldbi:Register(name, broker, db)
+      pcall(function()
+        Flux._minimap_buttons = Flux._minimap_buttons or {}
+        -- store the broker table for host-side invocation; keep ref to broker and db
+        Flux._minimap_buttons[name] = { broker = broker, db = db, visible = true }
+        -- notify the host to create a visual button for this registration
+        table.insert(Flux._host_calls, 'LibDBIconRegister|' .. tostring(name))
+      end)
+    end
     LibStub._libs['LibDBIcon-1.0'] = ldbi
   end
 
@@ -1187,6 +1207,202 @@ return table.concat(out, '\n')
                 var (ok, res) = KopiLuaRunner.TryRun(lua);
                 if (ok) return res ?? string.Empty;
                 return res ?? string.Empty;
+            }
+            catch { return string.Empty; }
+        }
+
+        // Execute a slash-style chat command (e.g. "/myaddon args") inside the Lua VM.
+        // Returns true if a matching SlashCmdList handler was found and invoked.
+        public static bool ExecuteSlashCommand(string input)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(input)) return false;
+                // Build a small Lua script that looks up SLASH_* globals and SlashCmdList
+                // and invokes the matching function with the remainder of the input.
+                var lua = "local input = [===[" + input + "]===]\n"
+                          + "local cmd, rest = input:match('^/([^%s]+)%s*(.*)$')\n"
+                          + "if not cmd then return 'no_cmd' end\n"
+                          + "local norm = '/'..cmd\n"
+                          + "local lnorm = string.lower(norm)\n"
+                          + "for k,v in pairs(_G) do\n"
+                          + "  if type(k) == 'string' and string.sub(k,1,6) == 'SLASH_' then\n"
+                          + "    local raw = string.sub(k,7)\n"
+                          + "    -- strip trailing digits from SLASH_ keys (e.g., Attune1 -> Attune)\n"
+                          + "    local key = string.match(raw, '^(.-)%d*$') or raw\n"
+                          + "    local entries = v\n"
+                          + "    if type(entries) == 'string' then\n"
+                          + "      if string.lower(entries) == lnorm then\n"
+                          + "        local fn = SlashCmdList[key] or SlashCmdList[raw]\n"
+                          + "        if type(fn) == 'function' then pcall(fn, rest); return 'ok|'..key end\n"
+                          + "      end\n"
+                          + "    elseif type(entries) == 'table' then\n"
+                          + "      for i=1,#entries do\n"
+                          + "        if string.lower(entries[i] or '') == lnorm then\n"
+                          + "          local fn = SlashCmdList[key] or SlashCmdList[raw]\n"
+                          + "          if type(fn) == 'function' then pcall(fn, rest); return 'ok|'..key end\n"
+                          + "        end\n"
+                          + "      end\n"
+                          + "    end\n"
+                          + "  end\n"
+                          + "end\n"
+                          + "-- fallback: try several key casings and common variants\n"
+                          + "local trykeys = {}\n"
+                          + "table.insert(trykeys, string.upper(cmd))\n"
+                          + "table.insert(trykeys, string.lower(cmd))\n"
+                          + "local cap = string.upper(string.sub(cmd,1,1))..string.sub(cmd,2)\n"
+                          + "table.insert(trykeys, cap)\n"
+                          + "for _,tk in ipairs(trykeys) do\n"
+                          + "  local fn = SlashCmdList[tk] or SlashCmdList[tk..'1'] or SlashCmdList[tk..'0']\n"
+                          + "  if type(fn) == 'function' then pcall(fn, rest); return 'ok|'..tostring(tk) end\n"
+                          + "end\n"
+                          + "return 'not_found'\n";
+
+                // Execute via a temp file to ensure the native VM path is used.
+                var tmp = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "flux_slash_" + System.Guid.NewGuid().ToString("N") + ".lua");
+                try
+                {
+                    System.IO.File.WriteAllText(tmp, lua);
+                    var (ok, res) = KopiLuaRunner.TryRunFile(tmp);
+                    Console.WriteLine($"ExecuteSlashCommand: success={ok}, res={(res ?? "(null)")}");
+                    if (!string.IsNullOrWhiteSpace(res) && res.Trim().StartsWith("ok")) return true;
+                    return false;
+                }
+                finally
+                {
+                    try { if (System.IO.File.Exists(tmp)) System.IO.File.Delete(tmp); } catch { }
+                }
+            }
+            catch { return false; }
+        }
+
+        // Dump runtime diagnostics: SlashCmdList, SLASH_* globals, and Flux._minimap_buttons
+        // Returns a newline-separated string suitable for appending to the emulator console.
+        public static string DumpRuntimeDiagnostics()
+        {
+            try
+            {
+                var lua = @"local out = {}
+-- Dump SLASH_ globals (mapping name->value(s))
+for k,v in pairs(_G) do
+  if type(k) == 'string' and string.sub(k,1,6) == 'SLASH_' then
+    local key = string.sub(k,7)
+    if type(v) == 'string' then
+      table.insert(out, string.format('SLASH_%s = %s', key, tostring(v)))
+    elseif type(v) == 'table' then
+      for i=1,#v do table.insert(out, string.format('SLASH_%s[%d] = %s', key, i, tostring(v[i] or '')) ) end
+    end
+  end
+end
+
+-- Dump SlashCmdList handlers (show which keys map to functions)
+if type(SlashCmdList) == 'table' then
+  for k,v in pairs(SlashCmdList) do
+    if type(v) == 'function' then
+      table.insert(out, string.format('SlashCmdList[%s] = function', tostring(k)))
+    else
+      table.insert(out, string.format('SlashCmdList[%s] = %s', tostring(k), tostring(v)))
+    end
+  end
+else
+  table.insert(out, 'SlashCmdList = (not a table)')
+end
+
+-- Dump Flux._minimap_buttons registry
+if Flux and Flux._minimap_buttons then
+  for name,rec in pairs(Flux._minimap_buttons) do
+    local icon = '(nil)'
+    local pos = '(nil)'
+    pcall(function()
+      if rec and rec.broker and rec.broker.icon then icon = tostring(rec.broker.icon) end
+      if rec and rec.db and (rec.db.minimapPos or rec.db.minimapbuttonpos) then pos = tostring(rec.db.minimapPos or rec.db.minimapbuttonpos) end
+    end)
+    table.insert(out, string.format('MinimapButton:%s icon=%s pos=%s visible=%s', tostring(name), icon, pos, tostring(rec.visible)))
+  end
+else
+  table.insert(out, 'Flux._minimap_buttons = (empty)')
+end
+
+return table.concat(out, '\n')";
+
+                var tmp = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "flux_diag_" + System.Guid.NewGuid().ToString("N") + ".lua");
+                try
+                {
+                    System.IO.File.WriteAllText(tmp, lua);
+                    var (ok, res) = KopiLuaRunner.TryRunFile(tmp);
+                    if (ok) return res ?? string.Empty;
+                    return res ?? string.Empty;
+                }
+                finally { try { if (System.IO.File.Exists(tmp)) System.IO.File.Delete(tmp); } catch { } }
+            }
+            catch { return string.Empty; }
+        }
+
+        // Scan LibDataBroker objects and return newline-separated lines of the form:
+        // LDB|<name>|<type>|<hasOnClick>|<icon>
+        public static string ScanLibDataBroker()
+        {
+            try
+            {
+                var lua = @"local out = {}
+local ldb = nil
+if LibStub and LibStub._libs and LibStub._libs['LibDataBroker-1.1'] then ldb = LibStub._libs['LibDataBroker-1.1'].objects end
+if not ldb and ldb_objects then ldb = ldb_objects end
+ldb = ldb or {}
+for name, data in pairs(ldb) do
+  local t = tostring((data and data.type) or '')
+  local hasOnClick = 0
+  pcall(function() if data and type(data.OnClick) == 'function' then hasOnClick = 1 end end)
+  local icon = ''
+  pcall(function()
+    if data then
+      if data.icon and type(data.icon) == 'string' then icon = data.icon end
+      if icon == '' and data.iconfile and type(data.iconfile) == 'string' then icon = data.iconfile end
+      if icon == '' and data.iconTexture and type(data.iconTexture) == 'string' then icon = data.iconTexture end
+      if icon == '' and data.texture and type(data.texture) == 'string' then icon = data.texture end
+      if icon == '' and type(data.icon) == 'function' then icon = '(func)' end
+    end
+  end)
+  table.insert(out, string.format('LDB|%s|%s|%d|%s', tostring(name), t, hasOnClick, tostring(icon)))
+end
+return table.concat(out, '\n')";
+
+                var (ok, res) = KopiLuaRunner.TryRun(lua);
+                if (ok && !string.IsNullOrEmpty(res)) return res; else return string.Empty;
+            }
+            catch { return string.Empty; }
+        }
+
+        // Attempt to invoke common addon UI opener functions after load. Returns newline-separated results.
+        public static string InvokeAddonUiOpeners(string addonName)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(addonName)) return string.Empty;
+                var safe = addonName.Replace("\"", "\\\"");
+                var lua = $@"local out = {{}}
+local name = '{safe}'
+local cand = {{ name..'_Show', name..'_ShowUI', name..'_Toggle', name..'_Frame', name..'Frame', name..'_Open', name..'_OpenUI', name }}
+for i,fnname in ipairs(cand) do
+  local f = _G[fnname]
+  if type(f) == 'function' then
+    local ok, err = pcall(f)
+    table.insert(out, string.format('Invoked function %s -> %s', fnname, ok and 'ok' or tostring(err)))
+    return table.concat(out, '\n')
+  end
+  -- if a frame table exists with a Show method, call it
+  local frame = _G[fnname]
+  if type(frame) == 'table' and type(frame.Show) == 'function' then
+    local ok, err = pcall(frame.Show, frame)
+    table.insert(out, string.format('Invoked frame.Show on %s -> %s', fnname, ok and 'ok' or tostring(err)))
+    return table.concat(out, '\n')
+  end
+end
+table.insert(out, 'No opener found')
+return table.concat(out, '\n')";
+
+                var (ok, res) = KopiLuaRunner.TryRun(lua);
+                if (ok && !string.IsNullOrEmpty(res)) return res; else return res ?? string.Empty;
             }
             catch { return string.Empty; }
         }
